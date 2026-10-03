@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { API_URL, getAssetUrl } from '../api'
+
+const API_URL = 'http://127.0.0.1:8000/api'
 
 function Profile() {
   const navigate = useNavigate()
@@ -9,10 +10,47 @@ function Profile() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [reviews, setReviews] = useState([])
+  const [reviewsLoading, setReviewsLoading] = useState(true)
+  const [reviewsError, setReviewsError] = useState('')
+  const [editingReviewId, setEditingReviewId] = useState(null)
+  const [reviewForm, setReviewForm] = useState(null)
+  const [reviewMessage, setReviewMessage] = useState('')
 
   useEffect(() => {
     fetchUser()
   }, [])
+
+  const fetchReviews = async (userId) => {
+    try {
+      setReviewsLoading(true)
+      setReviewsError('')
+      const ownReviews = []
+      let page = 1
+      let lastPage = 1
+
+      do {
+        const response = await axios.get(`${API_URL}/reviews`, {
+          params: { page }
+        })
+        const pageReviews = response.data?.data ?? response.data
+        if (!Array.isArray(pageReviews)) {
+          throw new TypeError('Expected the API response to contain a collection.')
+        }
+
+        ownReviews.push(...pageReviews.filter((review) => review.user?.user_id === userId))
+        lastPage = response.data?.meta?.last_page ?? response.data?.last_page ?? 1
+        page += 1
+      } while (page <= lastPage)
+
+      setReviews(ownReviews)
+    } catch (requestError) {
+      console.error(requestError)
+      setReviewsError('ไม่สามารถโหลดรีวิวของคุณได้')
+    } finally {
+      setReviewsLoading(false)
+    }
+  }
 
   const fetchUser = async () => {
     const token = localStorage.getItem('access_token')
@@ -36,6 +74,7 @@ function Profile() {
       )
 
       setUser(response.data)
+      await fetchReviews(response.data.user_id)
 
       localStorage.setItem(
         'user',
@@ -82,6 +121,62 @@ function Profile() {
       localStorage.removeItem('user')
 
       navigate('/login')
+    }
+  }
+
+  const startReviewEdit = (review) => {
+    setEditingReviewId(review.review_id)
+    setReviewForm({
+      rating_life: review.rating_life,
+      rating_work: review.rating_work,
+      rating_money: review.rating_money,
+      rating_society: review.rating_society,
+      review_text: review.review_text
+    })
+    setReviewMessage('')
+    setReviewsError('')
+  }
+
+  const saveReview = async (event) => {
+    event.preventDefault()
+    const token = localStorage.getItem('access_token')
+
+    try {
+      await axios.put(
+        `${API_URL}/reviews/${editingReviewId}`,
+        reviewForm,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setReviews((current) => current.filter((review) => review.review_id !== editingReviewId))
+      setEditingReviewId(null)
+      setReviewForm(null)
+      setReviewMessage('บันทึกรีวิวแล้ว และส่งกลับไปรอตรวจสอบอีกครั้ง')
+    } catch (requestError) {
+      console.error(requestError)
+      setReviewsError(requestError.response?.data?.message || 'ไม่สามารถแก้ไขรีวิวได้')
+    }
+  }
+
+  const deleteReview = async (reviewId) => {
+    if (!window.confirm('ยืนยันการลบรีวิวนี้หรือไม่?')) {
+      return
+    }
+
+    const token = localStorage.getItem('access_token')
+    try {
+      await axios.delete(`${API_URL}/reviews/${reviewId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setReviews((current) => current.filter((review) => review.review_id !== reviewId))
+      setReviewMessage('ลบรีวิวเรียบร้อยแล้ว')
+      if (editingReviewId === reviewId) {
+        setEditingReviewId(null)
+        setReviewForm(null)
+      }
+      setReviewsError('')
+    } catch (requestError) {
+      console.error(requestError)
+      setReviewsError(requestError.response?.data?.message || 'ไม่สามารถลบรีวิวได้')
     }
   }
 
@@ -155,7 +250,7 @@ function Profile() {
             {user.profile_image ? (
 
               <img
-                src={getAssetUrl(user.profile_image)}
+                src={new URL(user.profile_image, 'http://127.0.0.1:8000/').toString()}
                 alt={user.full_name}
                 className="h-28 w-28 rounded-full object-cover"
               />
@@ -249,6 +344,105 @@ function Profile() {
 
           </div>
 
+        </section>
+
+        <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900">รีวิวของฉัน</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            API ปัจจุบันแสดงเฉพาะรีวิวที่อนุมัติแล้ว รีวิวที่กำลังรอตรวจสอบจึงยังไม่แสดงที่นี่
+          </p>
+          {reviewsError && <p role="alert" className="mt-4 text-red-600">{reviewsError}</p>}
+          {reviewMessage && <p role="status" className="mt-4 text-green-700">{reviewMessage}</p>}
+          {reviewsLoading ? (
+            <p className="mt-5 text-gray-500">กำลังโหลดรีวิว...</p>
+          ) : reviews.length === 0 ? (
+            <p className="mt-5 text-gray-500">ไม่พบรีวิวที่อนุมัติแล้ว</p>
+          ) : (
+            <div className="mt-5 space-y-4">
+              {reviews.map((review) => (
+                <article key={review.review_id} className="rounded-lg border p-4">
+                  {editingReviewId === review.review_id ? (
+                    <form onSubmit={saveReview} className="space-y-4">
+                      {[
+                        ['rating_life', 'ชีวิตดี'],
+                        ['rating_work', 'งานดี'],
+                        ['rating_money', 'เงินดี'],
+                        ['rating_society', 'สังคมดี']
+                      ].map(([field, label]) => (
+                        <label key={field} className="mr-4 inline-flex items-center gap-2 text-sm">
+                          {label}
+                          <select
+                            required
+                            min="1"
+                            max="5"
+                            value={reviewForm[field]}
+                            onChange={(event) => setReviewForm({
+                              ...reviewForm,
+                              [field]: Number(event.target.value)
+                            })}
+                            className="rounded border px-2 py-1"
+                          >
+                            {[1, 2, 3, 4, 5].map((score) => (
+                              <option key={score} value={score}>{score}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                      <textarea
+                        required
+                        value={reviewForm.review_text}
+                        onChange={(event) => setReviewForm({
+                          ...reviewForm,
+                          review_text: event.target.value
+                        })}
+                        rows="4"
+                        className="w-full rounded-lg border px-3 py-2"
+                      />
+                      <div className="flex gap-3">
+                        <button className="rounded bg-blue-600 px-4 py-2 text-white">บันทึก</button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReviewId(null)}
+                          className="rounded border px-4 py-2"
+                        >
+                          ยกเลิก
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">{review.company?.company_name}</p>
+                          <p className="mt-1 text-sm text-gray-500">{review.review_text}</p>
+                        </div>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => startReviewEdit(review)}
+                            className="text-sm text-blue-600 hover:underline"
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            onClick={() => deleteReview(review.review_id)}
+                            className="text-sm text-red-600 hover:underline"
+                          >
+                            ลบ
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-600 sm:grid-cols-4">
+                        <span>ชีวิตดี: {review.rating_life}</span>
+                        <span>งานดี: {review.rating_work}</span>
+                        <span>เงินดี: {review.rating_money}</span>
+                        <span>สังคมดี: {review.rating_society}</span>
+                      </div>
+                    </>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
 

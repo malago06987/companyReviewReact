@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import axios from 'axios'
-import { API_URL, getApiCollection, getAssetUrl } from '../api'
+import Paginator from '../../components/others/Paginator'
+import ReviewCard from '../../components/review/ReviewCard'
+
+const API_URL = 'http://127.0.0.1:8000/api'
 
 function CompanyDetail() {
   const { id } = useParams()
@@ -9,12 +12,16 @@ function CompanyDetail() {
   const [company, setCompany] = useState(null)
   const [jobs, setJobs] = useState([])
   const [reviews, setReviews] = useState([])
+  const [jobPage, setJobPage] = useState(1)
+  const [jobLastPage, setJobLastPage] = useState(1)
+  const [reviewPage, setReviewPage] = useState(1)
+  const [reviewLastPage, setReviewLastPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     fetchCompany()
-  }, [id])
+  }, [id, jobPage, reviewPage])
 
   const fetchCompany = async () => {
     try {
@@ -23,13 +30,20 @@ function CompanyDetail() {
 
       const [companyResponse, jobsResponse, reviewsResponse] = await Promise.all([
         axios.get(`${API_URL}/companies/${id}`),
-        axios.get(`${API_URL}/jobs`, { params: { company_id: id } }),
-        axios.get(`${API_URL}/reviews`, { params: { company_id: id } })
+        axios.get(`${API_URL}/jobs`, { params: { company_id: id, page: jobPage } }),
+        axios.get(`${API_URL}/reviews`, { params: { company_id: id, page: reviewPage } })
       ])
 
       setCompany(companyResponse.data.data ?? companyResponse.data)
-      setJobs(getApiCollection(jobsResponse))
-      setReviews(getApiCollection(reviewsResponse))
+      const jobsData = jobsResponse.data?.data ?? jobsResponse.data
+      const reviewsData = reviewsResponse.data?.data ?? reviewsResponse.data
+      if (!Array.isArray(jobsData) || !Array.isArray(reviewsData)) {
+        throw new TypeError('Expected the API responses to contain collections.')
+      }
+      setJobs(jobsData)
+      setReviews(reviewsData)
+      setJobLastPage(jobsResponse.data?.meta?.last_page ?? jobsResponse.data?.last_page ?? 1)
+      setReviewLastPage(reviewsResponse.data?.meta?.last_page ?? reviewsResponse.data?.last_page ?? 1)
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลบริษัทได้')
@@ -96,7 +110,7 @@ function CompanyDetail() {
 
             {company.logo_image ? (
               <img
-                src={getAssetUrl(company.logo_image)}
+                src={new URL(company.logo_image, 'http://127.0.0.1:8000/').toString()}
                 alt={company.company_name}
                 className="h-24 w-24 rounded-xl object-cover"
               />
@@ -309,6 +323,11 @@ function CompanyDetail() {
             </p>
 
           )}
+          <Paginator
+            page={jobPage}
+            totalPages={jobLastPage}
+            onPageChange={setJobPage}
+          />
 
         </section>
 
@@ -342,98 +361,9 @@ function CompanyDetail() {
 
             <div className="mt-6 space-y-6">
 
-              {reviews.map((review, index) => {
-                const overallRating = [
-                  review.rating_life,
-                  review.rating_work,
-                  review.rating_money,
-                  review.rating_society
-                ].reduce((total, rating) => total + Number(rating || 0), 0) / 4
-
-                return (
-
-                <div
-                  key={review.review_id ?? review.id ?? index}
-                  className="border-b pb-6 last:border-b-0"
-                >
-
-                  <div className="flex items-center justify-between">
-
-                    <div>
-
-                      <p className="font-semibold text-gray-900">
-                        {review.user?.full_name || 'ผู้ใช้งาน'}
-                      </p>
-
-                      <p className="text-sm text-gray-500">
-                        {review.created_at
-                          ? new Date(review.created_at).toLocaleDateString('th-TH')
-                          : ''}
-                      </p>
-
-                    </div>
-
-                    <p className="font-bold text-yellow-500">
-                      ★ {overallRating.toFixed(1)}
-                    </p>
-
-                  </div>
-
-
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-
-                    <div>
-                      <span className="text-gray-500">
-                        ชีวิตดี
-                      </span>
-
-                      <p className="font-semibold">
-                        {review.rating_life ?? 0}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-500">
-                        งานดี
-                      </span>
-
-                      <p className="font-semibold">
-                        {review.rating_work ?? 0}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-500">
-                        เงินดี
-                      </span>
-
-                      <p className="font-semibold">
-                        {review.rating_money ?? 0}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-500">
-                        สังคมดี
-                      </span>
-
-                      <p className="font-semibold">
-                        {review.rating_society ?? 0}
-                      </p>
-                    </div>
-
-                  </div>
-
-
-                  {review.review_text && (
-                    <p className="mt-4 whitespace-pre-line text-gray-600">
-                      {review.review_text}
-                    </p>
-                  )}
-
-                </div>
-                )
-              })}
+              {reviews.map((review) => (
+                <ReviewCard key={review.review_id} review={review} />
+              ))}
 
             </div>
 
@@ -444,6 +374,11 @@ function CompanyDetail() {
             </p>
 
           )}
+          <Paginator
+            page={reviewPage}
+            totalPages={reviewLastPage}
+            onPageChange={setReviewPage}
+          />
 
         </section>
 

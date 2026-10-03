@@ -1,28 +1,55 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import axios from 'axios'
+
+const API_URL = 'http://127.0.0.1:8000/api'
+
+function readStoredUser() {
+  const savedUser = localStorage.getItem('user')
+
+  if (!savedUser) {
+    return null
+  }
+
+  try {
+    return JSON.parse(savedUser)
+  } catch (error) {
+    console.error(error)
+    return null
+  }
+}
 
 function Navbar() {
   const navigate = useNavigate()
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('auth_user')
+  const location = useLocation()
+  const [user, setUser] = useState(readStoredUser)
 
-    if (!savedUser) {
-      return null
-    }
+  const [logoutError, setLogoutError] = useState('')
+
+  useEffect(() => {
+    setUser(readStoredUser())
+  }, [location.pathname])
+
+  const handleLogout = async () => {
+    const token = localStorage.getItem('access_token')
 
     try {
-      return JSON.parse(savedUser)
-    } catch {
-      return null
+      if (token) {
+        await axios.post(
+          `${API_URL}/logout`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+      }
+    } catch (error) {
+      console.error(error)
+      setLogoutError('ไม่สามารถออกจากระบบบนเซิร์ฟเวอร์ได้')
+    } finally {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('user')
+      setUser(null)
+      navigate('/login')
     }
-  })
-
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_user')
-
-    setUser(null)
-    navigate('/login')
   }
 
   return (
@@ -62,6 +89,14 @@ function Navbar() {
             หางาน
           </Link>
 
+          {user?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="text-gray-700 hover:text-blue-600"
+            >
+              จัดการระบบ
+            </Link>
+          )}
 
           {user ? (
             <>
@@ -100,6 +135,11 @@ function Navbar() {
         </div>
 
       </div>
+      {logoutError && (
+        <p className="px-6 pb-3 text-right text-sm text-red-600">
+          {logoutError}
+        </p>
+      )}
     </nav>
   )
 }

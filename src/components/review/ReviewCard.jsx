@@ -1,9 +1,14 @@
-import { getAssetUrl } from '../api'
-
 function ReviewCard({ review }) {
   if (!review) {
     return null
   }
+
+  const overallRating = [
+    review.rating_life,
+    review.rating_work,
+    review.rating_money,
+    review.rating_society
+  ].reduce((total, rating) => total + Number(rating || 0), 0) / 4
 
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
@@ -13,7 +18,7 @@ function ReviewCard({ review }) {
 
         {review.user?.profile_image ? (
           <img
-            src={getAssetUrl(review.user.profile_image)}
+            src={new URL(review.user.profile_image, 'http://127.0.0.1:8000/').toString()}
             alt={review.user.full_name}
             className="h-12 w-12 rounded-full object-cover"
           />
@@ -35,6 +40,9 @@ function ReviewCard({ review }) {
           </p>
         </div>
 
+        <p className="ml-auto font-bold text-yellow-500">
+          ★ {overallRating.toFixed(1)}
+        </p>
       </div>
 
 

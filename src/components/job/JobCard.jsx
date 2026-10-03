@@ -73,6 +73,10 @@ function JobCard({ job }) {
         </p>
       )}
 
+      <p className="mt-4 text-xs text-gray-500">
+        สถานะ: {job.status === 'open' ? 'เปิดรับสมัคร' : job.status === 'closed' ? 'ปิดรับสมัคร' : job.status || 'ไม่ระบุ'}
+      </p>
+
 
       {/* Detail Button */}
       <Link

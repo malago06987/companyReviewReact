@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
-import { API_URL } from '../api'
+
+const API_URL = 'http://127.0.0.1:8000/api'
 
 function WriteReview() {
   const navigate = useNavigate()

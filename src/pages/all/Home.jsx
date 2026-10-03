@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { API_URL, getApiCollection, getAssetUrl } from '../api'
+import CompanyList from '../../components/company/CompanyList'
+import JobCard from '../../components/job/JobCard'
+
+const API_URL = 'http://127.0.0.1:8000/api'
 
 function Home() {
+  const navigate = useNavigate()
   const [companies, setCompanies] = useState([])
   const [jobs, setJobs] = useState([])
   const [search, setSearch] = useState('')
@@ -24,8 +28,13 @@ function Home() {
         axios.get(`${API_URL}/jobs`),
       ])
 
-      setCompanies(getApiCollection(companiesResponse))
-      setJobs(getApiCollection(jobsResponse))
+      const companiesData = companiesResponse.data?.data ?? companiesResponse.data
+      const jobsData = jobsResponse.data?.data ?? jobsResponse.data
+      if (!Array.isArray(companiesData) || !Array.isArray(jobsData)) {
+        throw new TypeError('Expected the API responses to contain collections.')
+      }
+      setCompanies(companiesData)
+      setJobs(jobsData)
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลได้')
@@ -41,7 +50,7 @@ function Home() {
       return
     }
 
-    window.location.href = `/companies?search=${encodeURIComponent(search)}`
+    navigate(`/companies?search=${encodeURIComponent(search)}`)
   }
 
   return (
@@ -185,111 +194,8 @@ function Home() {
 
 
           {!loading && !error && (
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-
-              {companies.slice(0, 6).map((company) => (
-                <div
-                  key={company.company_id}
-                  className="rounded-xl bg-white p-6 shadow-sm"
-                >
-
-                  <div className="flex items-center gap-4">
-
-                    {company.logo_image ? (
-                      <img
-                        src={getAssetUrl(company.logo_image)}
-                        alt={company.company_name}
-                        className="h-16 w-16 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-200 text-gray-500">
-                        Logo
-                      </div>
-                    )}
-
-                    <div>
-                      <h3 className="font-bold text-gray-900">
-                        {company.company_name}
-                      </h3>
-
-                      <p className="text-sm text-gray-500">
-                        {company.industry?.industry_name || company.industry || 'ไม่ระบุ'}
-                      </p>
-                    </div>
-
-                  </div>
-
-
-                  <div className="mt-6">
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">
-                        คะแนนรวม
-                      </span>
-
-                      <span className="font-bold text-yellow-500">
-                        ★ {company.rating?.overall ?? 0}
-                      </span>
-                    </div>
-
-                  </div>
-
-
-                  <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-
-                    <div>
-                      <p className="text-gray-500">
-                        ชีวิตดี
-                      </p>
-
-                      <p className="font-semibold">
-                        {company.rating?.life ?? 0}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-gray-500">
-                        งานดี
-                      </p>
-
-                      <p className="font-semibold">
-                        {company.rating?.work ?? 0}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-gray-500">
-                        เงินดี
-                      </p>
-
-                      <p className="font-semibold">
-                        {company.rating?.money ?? 0}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-gray-500">
-                        สังคมดี
-                      </p>
-
-                      <p className="font-semibold">
-                        {company.rating?.society ?? 0}
-                      </p>
-                    </div>
-
-                  </div>
-
-
-                  <Link
-                    to={`/companies/${company.company_id}`}
-                    className="mt-6 block rounded-lg border border-blue-600 py-2 text-center text-blue-600 hover:bg-blue-600 hover:text-white"
-                  >
-                    ดูรายละเอียด
-                  </Link>
-
-                </div>
-              ))}
-
+            <div className="mt-8">
+              <CompanyList items={companies.slice(0, 6)} />
             </div>
           )}
 
@@ -325,51 +231,9 @@ function Home() {
 
           {!loading && !error && (
             <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-
               {jobs.slice(0, 6).map((job) => (
-                <div
-                  key={job.job_id}
-                  className="rounded-xl border bg-white p-6"
-                >
-
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {job.job_title}
-                  </h3>
-
-                  <p className="mt-2 text-gray-600">
-                    {job.company?.company_name}
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    {job.job_function?.function_name}
-                  </p>
-
-                  <div className="mt-4 space-y-1 text-sm text-gray-600">
-
-                    <p>
-                      สถานที่: {job.work_location || 'ไม่ระบุ'}
-                    </p>
-
-                    <p>
-                      รูปแบบงาน: {job.employment_type || 'ไม่ระบุ'}
-                    </p>
-
-                    <p>
-                      เงินเดือน: {job.salary || 'ไม่ระบุ'}
-                    </p>
-
-                  </div>
-
-                  <Link
-                    to={`/jobs/${job.job_id}`}
-                    className="mt-5 block text-blue-600 hover:underline"
-                  >
-                    ดูรายละเอียด →
-                  </Link>
-
-                </div>
+                <JobCard key={job.job_id} job={job} />
               ))}
-
             </div>
           )}
 

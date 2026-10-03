@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom'
 
-import { getAssetUrl } from '../api'
-
 function CompanyCard({ company }) {
   if (!company) {
     return null
@@ -17,7 +15,7 @@ function CompanyCard({ company }) {
 
         {company.logo_image ? (
           <img
-            src={getAssetUrl(company.logo_image)}
+            src={new URL(company.logo_image, 'http://127.0.0.1:8000/').toString()}
             alt={company.company_name}
             className="h-16 w-16 rounded-lg object-cover"
           />

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import axios from 'axios'
-import { API_URL } from '../api'
+
+const API_URL = 'http://127.0.0.1:8000/api'
 
 function JobDetail() {
   const { id } = useParams()
@@ -116,7 +117,11 @@ function JobDetail() {
 
 
             <span className="w-fit rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700">
-              {job.status || 'ไม่ระบุสถานะ'}
+              {job.status === 'open'
+                ? 'เปิดรับสมัคร'
+                : job.status === 'closed'
+                  ? 'ปิดรับสมัคร'
+                  : job.status || 'ไม่ระบุสถานะ'}
             </span>
 
           </div>
