@@ -1,35 +1,17 @@
-import React from "react";
-import Navbar from "../compornents/navbar";
-import Footer from "../compornents/footer";
+import { Outlet } from 'react-router-dom'
+import Navbar from '../compornents/navbar'
+import Footer from '../compornents/footer'
 
 function MainLayout() {
   return (
-    <div>
+    <div className="flex min-h-screen flex-col">
       <Navbar />
-
-      <main>
-        <h1>Company Review</h1>
-        <p>แพลตฟอร์มรีวิวบริษัทและค้นหางาน</p>
-
-        <section>
-          <h2>บริษัท</h2>
-          {/* CompanyCard จะใช้ตรงนี้ */}
-        </section>
-
-        <section>
-          <h2>งาน</h2>
-          {/* JobCard จะใช้ตรงนี้ */}
-        </section>
-
-        <section>
-          <h2>รีวิว</h2>
-          {/* ReviewCard จะใช้ตรงนี้ */}
-        </section>
+      <main className="flex-1">
+        <Outlet />
       </main>
-
       <Footer />
     </div>
-  );
+  )
 }
 
-export default MainLayout;
+export default MainLayout

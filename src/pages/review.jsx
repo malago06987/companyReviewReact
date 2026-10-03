@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL } from '../api'
 
 function WriteReview() {
   const navigate = useNavigate()
@@ -21,8 +22,6 @@ function WriteReview() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   useEffect(() => {
     if (!companyId) {
@@ -187,7 +186,7 @@ function WriteReview() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
         <p className="text-gray-500">
           กำลังโหลดข้อมูลบริษัท...
         </p>
@@ -197,7 +196,7 @@ function WriteReview() {
 
   if (error && !company) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
 
         <p className="text-red-500">
           {error}
@@ -215,7 +214,7 @@ function WriteReview() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="bg-gray-50 px-6 py-10">
 
       <div className="mx-auto max-w-3xl">
 

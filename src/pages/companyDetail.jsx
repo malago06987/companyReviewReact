@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL, getApiCollection, getAssetUrl } from '../api'
 
 function CompanyDetail() {
   const { id } = useParams()
 
   const [company, setCompany] = useState(null)
+  const [jobs, setJobs] = useState([])
+  const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   useEffect(() => {
     fetchCompany()
@@ -20,11 +21,15 @@ function CompanyDetail() {
       setLoading(true)
       setError('')
 
-      const response = await axios.get(
-        `${API_URL}/companies/${id}`
-      )
+      const [companyResponse, jobsResponse, reviewsResponse] = await Promise.all([
+        axios.get(`${API_URL}/companies/${id}`),
+        axios.get(`${API_URL}/jobs`, { params: { company_id: id } }),
+        axios.get(`${API_URL}/reviews`, { params: { company_id: id } })
+      ])
 
-      setCompany(response.data.data)
+      setCompany(companyResponse.data.data ?? companyResponse.data)
+      setJobs(getApiCollection(jobsResponse))
+      setReviews(getApiCollection(reviewsResponse))
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลบริษัทได้')
@@ -35,7 +40,7 @@ function CompanyDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
         <p className="text-gray-500">
           กำลังโหลดข้อมูลบริษัท...
         </p>
@@ -45,7 +50,7 @@ function CompanyDetail() {
 
   if (error) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
         <p className="text-red-500">
           {error}
         </p>
@@ -62,7 +67,7 @@ function CompanyDetail() {
 
   if (!company) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
         <p className="text-gray-500">
           ไม่พบข้อมูลบริษัท
         </p>
@@ -71,7 +76,7 @@ function CompanyDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="bg-gray-50 px-6 py-10">
 
       <div className="mx-auto max-w-6xl">
 
@@ -91,7 +96,7 @@ function CompanyDetail() {
 
             {company.logo_image ? (
               <img
-                src={`http://127.0.0.1:8000/${company.logo_image}`}
+                src={getAssetUrl(company.logo_image)}
                 alt={company.company_name}
                 className="h-24 w-24 rounded-xl object-cover"
               />
@@ -108,7 +113,7 @@ function CompanyDetail() {
               </h1>
 
               <p className="mt-2 text-gray-500">
-                {company.industry?.industry_name || 'ไม่ระบุอุตสาหกรรม'}
+                {company.industry?.industry_name || company.industry || 'ไม่ระบุอุตสาหกรรม'}
               </p>
 
               {company.address && (
@@ -251,11 +256,11 @@ function CompanyDetail() {
           </div>
 
 
-          {company.jobs && company.jobs.length > 0 ? (
+          {jobs.length > 0 ? (
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
 
-              {company.jobs.map((job) => (
+              {jobs.map((job) => (
 
                 <div
                   key={job.job_id}
@@ -333,14 +338,22 @@ function CompanyDetail() {
           </div>
 
 
-          {company.reviews && company.reviews.length > 0 ? (
+          {reviews.length > 0 ? (
 
             <div className="mt-6 space-y-6">
 
-              {company.reviews.map((review) => (
+              {reviews.map((review, index) => {
+                const overallRating = [
+                  review.rating_life,
+                  review.rating_work,
+                  review.rating_money,
+                  review.rating_society
+                ].reduce((total, rating) => total + Number(rating || 0), 0) / 4
+
+                return (
 
                 <div
-                  key={review.review_id}
+                  key={review.review_id ?? review.id ?? index}
                   className="border-b pb-6 last:border-b-0"
                 >
 
@@ -353,13 +366,15 @@ function CompanyDetail() {
                       </p>
 
                       <p className="text-sm text-gray-500">
-                        {review.employment_status || ''}
+                        {review.created_at
+                          ? new Date(review.created_at).toLocaleDateString('th-TH')
+                          : ''}
                       </p>
 
                     </div>
 
                     <p className="font-bold text-yellow-500">
-                      ★ {review.overall_rating ?? 0}
+                      ★ {overallRating.toFixed(1)}
                     </p>
 
                   </div>
@@ -373,7 +388,7 @@ function CompanyDetail() {
                       </span>
 
                       <p className="font-semibold">
-                        {review.life_rating ?? 0}
+                        {review.rating_life ?? 0}
                       </p>
                     </div>
 
@@ -383,7 +398,7 @@ function CompanyDetail() {
                       </span>
 
                       <p className="font-semibold">
-                        {review.work_rating ?? 0}
+                        {review.rating_work ?? 0}
                       </p>
                     </div>
 
@@ -393,7 +408,7 @@ function CompanyDetail() {
                       </span>
 
                       <p className="font-semibold">
-                        {review.money_rating ?? 0}
+                        {review.rating_money ?? 0}
                       </p>
                     </div>
 
@@ -403,22 +418,22 @@ function CompanyDetail() {
                       </span>
 
                       <p className="font-semibold">
-                        {review.society_rating ?? 0}
+                        {review.rating_society ?? 0}
                       </p>
                     </div>
 
                   </div>
 
 
-                  {review.comment && (
+                  {review.review_text && (
                     <p className="mt-4 whitespace-pre-line text-gray-600">
-                      {review.comment}
+                      {review.review_text}
                     </p>
                   )}
 
                 </div>
-
-              ))}
+                )
+              })}
 
             </div>
 

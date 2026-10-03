@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL, getApiCollection } from '../api'
 
 function Jobs() {
   const [jobs, setJobs] = useState([])
@@ -12,8 +13,6 @@ function Jobs() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   useEffect(() => {
     fetchJobs(searchParams.get('company_id') || '')
@@ -33,7 +32,7 @@ function Jobs() {
         }
       )
 
-      setJobs(response.data.data || [])
+      setJobs(getApiCollection(response))
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลตำแหน่งงานได้')
@@ -55,7 +54,7 @@ function Jobs() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="bg-gray-50 px-6 py-10">
 
       <div className="mx-auto max-w-6xl">
 
@@ -197,8 +196,8 @@ function Jobs() {
                 {/* Status */}
                 <div className="mt-5">
 
-                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-                    เปิดรับสมัคร
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                    {job.status || 'ไม่ระบุสถานะ'}
                   </span>
 
                 </div>

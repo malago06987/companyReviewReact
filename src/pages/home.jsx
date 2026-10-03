@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL, getApiCollection, getAssetUrl } from '../api'
 
 function Home() {
   const [companies, setCompanies] = useState([])
@@ -8,8 +9,6 @@ function Home() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   useEffect(() => {
     fetchHomeData()
@@ -25,8 +24,8 @@ function Home() {
         axios.get(`${API_URL}/jobs`),
       ])
 
-      setCompanies(companiesResponse.data.data || [])
-      setJobs(jobsResponse.data.data || [])
+      setCompanies(getApiCollection(companiesResponse))
+      setJobs(getApiCollection(jobsResponse))
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลได้')
@@ -46,7 +45,7 @@ function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="bg-white">
 
       {/* Hero */}
       <section className="bg-gray-100 px-6 py-16">
@@ -198,7 +197,7 @@ function Home() {
 
                     {company.logo_image ? (
                       <img
-                        src={`http://127.0.0.1:8000/${company.logo_image}`}
+                        src={getAssetUrl(company.logo_image)}
                         alt={company.company_name}
                         className="h-16 w-16 rounded-lg object-cover"
                       />
@@ -214,7 +213,7 @@ function Home() {
                       </h3>
 
                       <p className="text-sm text-gray-500">
-                        {company.industry || 'ไม่ระบุ'}
+                        {company.industry?.industry_name || company.industry || 'ไม่ระบุ'}
                       </p>
                     </div>
 
@@ -392,7 +391,7 @@ function Home() {
           </p>
 
           <Link
-            to="/review"
+            to="/companies"
             className="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
           >
             เขียนรีวิว

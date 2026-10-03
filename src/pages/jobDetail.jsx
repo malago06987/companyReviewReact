@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL } from '../api'
 
 function JobDetail() {
   const { id } = useParams()
@@ -8,8 +9,6 @@ function JobDetail() {
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   useEffect(() => {
     fetchJob()
@@ -35,7 +34,7 @@ function JobDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
         <p className="text-gray-500">
           กำลังโหลดข้อมูลตำแหน่งงาน...
         </p>
@@ -45,7 +44,7 @@ function JobDetail() {
 
   if (error) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
 
         <p className="text-red-500">
           {error}
@@ -64,7 +63,7 @@ function JobDetail() {
 
   if (!job) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
 
         <p className="text-gray-500">
           ไม่พบข้อมูลตำแหน่งงาน
@@ -82,7 +81,7 @@ function JobDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="bg-gray-50 px-6 py-10">
 
       <div className="mx-auto max-w-5xl">
 
@@ -116,8 +115,8 @@ function JobDetail() {
             </div>
 
 
-            <span className="w-fit rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-700">
-              เปิดรับสมัคร
+            <span className="w-fit rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700">
+              {job.status || 'ไม่ระบุสถานะ'}
             </span>
 
           </div>

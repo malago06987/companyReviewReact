@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL, getAssetUrl } from '../api'
 
 function Profile() {
   const navigate = useNavigate()
@@ -8,8 +9,6 @@ function Profile() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   useEffect(() => {
     fetchUser()
@@ -88,7 +87,7 @@ function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
         <p className="text-gray-500">
           กำลังโหลดข้อมูลโปรไฟล์...
         </p>
@@ -98,7 +97,7 @@ function Profile() {
 
   if (error) {
     return (
-      <div className="min-h-screen px-6 py-16 text-center">
+      <div className="px-6 py-16 text-center">
 
         <p className="text-red-500">
           {error}
@@ -120,7 +119,7 @@ function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="bg-gray-50 px-6 py-10">
 
       <div className="mx-auto max-w-4xl">
 
@@ -156,7 +155,7 @@ function Profile() {
             {user.profile_image ? (
 
               <img
-                src={`http://127.0.0.1:8000/${user.profile_image}`}
+                src={getAssetUrl(user.profile_image)}
                 alt={user.full_name}
                 className="h-28 w-28 rounded-full object-cover"
               />

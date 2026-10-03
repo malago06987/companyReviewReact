@@ -1,3 +1,5 @@
+import { getAssetUrl } from '../api'
+
 function ReviewCard({ review }) {
   if (!review) {
     return null
@@ -11,7 +13,7 @@ function ReviewCard({ review }) {
 
         {review.user?.profile_image ? (
           <img
-            src={`http://127.0.0.1:8000/${review.user.profile_image}`}
+            src={getAssetUrl(review.user.profile_image)}
             alt={review.user.full_name}
             className="h-12 w-12 rounded-full object-cover"
           />
@@ -45,7 +47,7 @@ function ReviewCard({ review }) {
           </p>
 
           <p className="mt-1 font-semibold">
-            ★ {review.life_rating ?? 0}
+            ★ {review.rating_life ?? 0}
           </p>
         </div>
 
@@ -56,7 +58,7 @@ function ReviewCard({ review }) {
           </p>
 
           <p className="mt-1 font-semibold">
-            ★ {review.work_rating ?? 0}
+            ★ {review.rating_work ?? 0}
           </p>
         </div>
 
@@ -67,7 +69,7 @@ function ReviewCard({ review }) {
           </p>
 
           <p className="mt-1 font-semibold">
-            ★ {review.money_rating ?? 0}
+            ★ {review.rating_money ?? 0}
           </p>
         </div>
 
@@ -78,7 +80,7 @@ function ReviewCard({ review }) {
           </p>
 
           <p className="mt-1 font-semibold">
-            ★ {review.society_rating ?? 0}
+            ★ {review.rating_society ?? 0}
           </p>
         </div>
 
@@ -86,10 +88,10 @@ function ReviewCard({ review }) {
 
 
       {/* Review Text */}
-      {review.comment && (
+      {review.review_text && (
         <div className="mt-5">
           <p className="whitespace-pre-line text-sm leading-6 text-gray-700">
-            {review.comment}
+            {review.review_text}
           </p>
         </div>
       )}

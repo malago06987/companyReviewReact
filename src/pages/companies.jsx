@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL, getApiCollection, getAssetUrl } from '../api'
 
 function Companies() {
   const [companies, setCompanies] = useState([])
@@ -12,8 +13,6 @@ function Companies() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   useEffect(() => {
     fetchCompanies(searchParams.get('search') || '')
@@ -33,7 +32,7 @@ function Companies() {
         }
       )
 
-      setCompanies(response.data.data || [])
+      setCompanies(getApiCollection(response))
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลบริษัทได้')
@@ -55,7 +54,7 @@ function Companies() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="bg-gray-50 px-6 py-10">
 
       <div className="mx-auto max-w-6xl">
 
@@ -139,7 +138,7 @@ function Companies() {
                   {company.logo_image ? (
 
                     <img
-                      src={`http://127.0.0.1:8000/${company.logo_image}`}
+                      src={getAssetUrl(company.logo_image)}
                       alt={company.company_name}
                       className="h-16 w-16 rounded-lg object-cover"
                     />
@@ -160,7 +159,7 @@ function Companies() {
                     </h2>
 
                     <p className="mt-1 text-sm text-gray-500">
-                      {company.industry || 'ไม่ระบุอุตสาหกรรม'}
+                      {company.industry?.industry_name || company.industry || 'ไม่ระบุอุตสาหกรรม'}
                     </p>
 
                   </div>

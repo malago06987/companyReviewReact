@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { API_URL } from '../api'
 
 function Register() {
   const navigate = useNavigate()
@@ -15,8 +16,6 @@ function Register() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const API_URL = 'http://127.0.0.1:8000/api'
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -104,7 +103,7 @@ function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-6 py-10">
+    <div className="flex justify-center bg-gray-50 px-6 py-10">
 
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm">
 
