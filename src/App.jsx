@@ -9,7 +9,7 @@ import Login from './pages/login'
 import Register from './pages/register'
 import Profile from './pages/profile'
 import WriteReview from './pages/reviews/WriteReview'
-
+import Navbar from './components/Navbar'
 function App() {
   return (
     <BrowserRouter>
