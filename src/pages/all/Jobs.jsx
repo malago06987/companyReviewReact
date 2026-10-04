@@ -21,10 +21,6 @@ function Jobs() {
   const [jobs, setJobs] = useState([])
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [companyId, setCompanyId] = useState(
-    searchParams.get('company_id') || ''
-  )
-  const [search, setSearch] = useState('')
   const [jobFunctions, setJobFunctions] = useState([])
   const [companies, setCompanies] = useState([])
   const [selectedFunction, setSelectedFunction] = useState('')
@@ -51,7 +47,7 @@ function Jobs() {
   const currentPage = Number(searchParams.get('page') || 1)
 
   useEffect(() => {
-    fetchJobs(searchParams.get('company_id') || '', currentPage)
+    fetchJobs(currentPage)
   }, [searchParams])
 
   useEffect(() => {
@@ -69,7 +65,7 @@ function Jobs() {
     })
   }, [])
 
-  const fetchJobs = async (company, page) => {
+  const fetchJobs = async (page) => {
     try {
       setLoading(true)
       setError('')
@@ -78,7 +74,6 @@ function Jobs() {
         `${API_URL}/jobs`,
         {
           params: {
-            company_id: company || undefined,
             page
           }
         }
@@ -95,18 +90,6 @@ function Jobs() {
       setError('ไม่สามารถโหลดข้อมูลตำแหน่งงานได้')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleFilter = (e) => {
-    e.preventDefault()
-
-    if (companyId.trim()) {
-      setSearchParams({
-        company_id: companyId.trim()
-      })
-    } else {
-      setSearchParams({})
     }
   }
 
@@ -181,16 +164,12 @@ function Jobs() {
   }
 
   const filteredJobs = jobs.filter((job) => {
-    const query = search.trim().toLowerCase()
-    const matchesSearch = !query || [
-      job.job_title,
-      job.company?.company_name,
-      job.job_function?.function_name,
-      job.work_location
-    ].some((value) => value?.toLowerCase().includes(query))
+    if (job.status !== 'open') {
+      return false
+    }
     const matchesFunction = !selectedFunction
       || String(job.job_function?.function_id) === selectedFunction
-    return matchesSearch && matchesFunction
+    return matchesFunction
   })
 
   return (
@@ -361,48 +340,7 @@ function Jobs() {
           </form>
         )}
 
-        {/* Filter */}
-        <form
-          onSubmit={handleFilter}
-          className="mt-8 rounded-xl bg-white p-5 shadow-sm"
-        >
-
-          <label className="block text-sm font-medium text-gray-700">
-            รหัสบริษัท
-          </label>
-
-          <div className="mt-2 flex gap-3">
-
-            <input
-              type="number"
-              value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-              placeholder="กรอกรหัสบริษัท"
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
-            />
-
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700"
-            >
-              ค้นหา
-            </button>
-
-          </div>
-
-        </form>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="text-sm font-medium text-gray-700">
-            ค้นหางานในหน้าปัจจุบัน
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="ชื่อตำแหน่ง บริษัท หรือสถานที่"
-              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3"
-            />
-          </label>
+        <div className="mt-8 max-w-sm">
           <label className="text-sm font-medium text-gray-700">
             กรองตามสายงาน
             <select

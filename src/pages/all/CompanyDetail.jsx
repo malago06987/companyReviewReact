@@ -55,7 +55,7 @@ function CompanyDetail() {
           console.error(new TypeError('Expected the jobs API response to contain a collection.'))
           setJobsError('ไม่สามารถโหลดตำแหน่งงานของบริษัทนี้ได้')
         } else {
-          setJobs(jobsData)
+          setJobs(jobsData.filter((job) => job.status === 'open'))
           setJobLastPage(jobsResponse.data?.meta?.last_page ?? jobsResponse.data?.last_page ?? 1)
         }
       }

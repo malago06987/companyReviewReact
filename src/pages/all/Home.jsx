@@ -81,7 +81,7 @@ function Home() {
   const popularCompanies = [...companies].sort(
     (first, second) => (Number(second.rating?.overall) || 0) - (Number(first.rating?.overall) || 0)
   )
-  const highestSalaryJobs = [...jobs].sort((first, second) => {
+  const highestSalaryJobs = jobs.filter((job) => job.status === 'open').sort((first, second) => {
     const firstSalary = getSalaryAmount(first.salary)
     const secondSalary = getSalaryAmount(second.salary)
     if (firstSalary === null) return secondSalary === null ? 0 : 1

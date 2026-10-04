@@ -25,6 +25,7 @@ function Profile() {
   const [submittedJobs, setSubmittedJobs] = useState([])
   const [submissionsLoading, setSubmissionsLoading] = useState(true)
   const [submissionsError, setSubmissionsError] = useState('')
+  const [updatingJobStatusId, setUpdatingJobStatusId] = useState(null)
   const [editingReviewId, setEditingReviewId] = useState(null)
   const [reviewForm, setReviewForm] = useState(null)
   const [reviewMessage, setReviewMessage] = useState('')
@@ -89,6 +90,34 @@ function Profile() {
       )
     } finally {
       setSubmissionsLoading(false)
+    }
+  }
+
+  const toggleJobStatus = async (job) => {
+    const nextStatus = job.status === 'open' ? 'closed' : 'open'
+    const token = localStorage.getItem('access_token')
+    setUpdatingJobStatusId(job.job_id)
+    setSubmissionsError('')
+
+    try {
+      const response = await axios.patch(
+        `${API_URL}/jobs/${job.job_id}`,
+        { status: nextStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const updatedJob = response.data?.data ?? response.data
+      setSubmittedJobs((current) => current.map((item) => (
+        item.job_id === job.job_id
+          ? { ...item, ...updatedJob, status: nextStatus }
+          : item
+      )))
+    } catch (requestError) {
+      console.error(requestError)
+      setSubmissionsError(
+        requestError.response?.data?.message || 'ไม่สามารถเปลี่ยนสถานะประกาศงานได้'
+      )
+    } finally {
+      setUpdatingJobStatusId(null)
     }
   }
 
@@ -429,6 +458,7 @@ function Profile() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-800">ประกาศงาน</h3>
+             
                 {submittedJobs.length === 0 ? (
                   <p className="mt-3 text-sm text-gray-500">ยังไม่มีประกาศงานที่ส่ง</p>
                 ) : (
@@ -439,6 +469,23 @@ function Profile() {
                         <p className="mt-1 text-sm text-gray-600">
                           {job.company?.company_name || 'ไม่ระบุบริษัท'} · สถานะ: {approvalStatusLabel(job.approval_status)}
                         </p>
+                        {job.approval_status === 'approved' && (
+                          <div className="mt-3 flex items-center gap-3">
+                            <span className={`text-sm ${job.status === 'open' ? 'text-green-700' : 'text-gray-500'}`}>
+                              {job.status === 'open' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={updatingJobStatusId === job.job_id}
+                              onClick={() => toggleJobStatus(job)}
+                              className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                            >
+                              {updatingJobStatusId === job.job_id
+                                ? 'กำลังบันทึก...'
+                                : job.status === 'open' ? 'ปิดรับสมัคร' : 'เปิดรับสมัคร'}
+                            </button>
+                          </div>
+                        )}
                         {job.rejection_reason && (
                           <p className="mt-2 text-sm text-red-700">
                             เหตุผลที่ปฏิเสธ: {job.rejection_reason}
