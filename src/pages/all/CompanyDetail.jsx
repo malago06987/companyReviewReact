@@ -12,6 +12,8 @@ function CompanyDetail() {
   const [company, setCompany] = useState(null)
   const [jobs, setJobs] = useState([])
   const [reviews, setReviews] = useState([])
+  const [jobsError, setJobsError] = useState('')
+  const [reviewsError, setReviewsError] = useState('')
   const [jobPage, setJobPage] = useState(1)
   const [jobLastPage, setJobLastPage] = useState(1)
   const [reviewPage, setReviewPage] = useState(1)
@@ -27,23 +29,51 @@ function CompanyDetail() {
     try {
       setLoading(true)
       setError('')
+      setJobsError('')
+      setReviewsError('')
 
-      const [companyResponse, jobsResponse, reviewsResponse] = await Promise.all([
+      const [companyResult, jobsResult, reviewsResult] = await Promise.allSettled([
         axios.get(`${API_URL}/companies/${id}`),
         axios.get(`${API_URL}/jobs`, { params: { company_id: id, page: jobPage } }),
         axios.get(`${API_URL}/reviews`, { params: { company_id: id, page: reviewPage } })
       ])
 
-      setCompany(companyResponse.data.data ?? companyResponse.data)
-      const jobsData = jobsResponse.data?.data ?? jobsResponse.data
-      const reviewsData = reviewsResponse.data?.data ?? reviewsResponse.data
-      if (!Array.isArray(jobsData) || !Array.isArray(reviewsData)) {
-        throw new TypeError('Expected the API responses to contain collections.')
+      if (companyResult.status === 'rejected') {
+        throw companyResult.reason
       }
-      setJobs(jobsData)
-      setReviews(reviewsData)
-      setJobLastPage(jobsResponse.data?.meta?.last_page ?? jobsResponse.data?.last_page ?? 1)
-      setReviewLastPage(reviewsResponse.data?.meta?.last_page ?? reviewsResponse.data?.last_page ?? 1)
+
+      const companyResponse = companyResult.value
+      setCompany(companyResponse.data.data ?? companyResponse.data)
+
+      if (jobsResult.status === 'rejected') {
+        console.error(jobsResult.reason)
+        setJobsError('ไม่สามารถโหลดตำแหน่งงานของบริษัทนี้ได้')
+      } else {
+        const jobsResponse = jobsResult.value
+        const jobsData = jobsResponse.data?.data ?? jobsResponse.data
+        if (!Array.isArray(jobsData)) {
+          console.error(new TypeError('Expected the jobs API response to contain a collection.'))
+          setJobsError('ไม่สามารถโหลดตำแหน่งงานของบริษัทนี้ได้')
+        } else {
+          setJobs(jobsData)
+          setJobLastPage(jobsResponse.data?.meta?.last_page ?? jobsResponse.data?.last_page ?? 1)
+        }
+      }
+
+      if (reviewsResult.status === 'rejected') {
+        console.error(reviewsResult.reason)
+        setReviewsError('ไม่สามารถโหลดรีวิวของบริษัทนี้ได้')
+      } else {
+        const reviewsResponse = reviewsResult.value
+        const reviewsData = reviewsResponse.data?.data ?? reviewsResponse.data
+        if (!Array.isArray(reviewsData)) {
+          console.error(new TypeError('Expected the reviews API response to contain a collection.'))
+          setReviewsError('ไม่สามารถโหลดรีวิวของบริษัทนี้ได้')
+        } else {
+          setReviews(reviewsData)
+          setReviewLastPage(reviewsResponse.data?.meta?.last_page ?? reviewsResponse.data?.last_page ?? 1)
+        }
+      }
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลบริษัทได้')
@@ -270,7 +300,9 @@ function CompanyDetail() {
           </div>
 
 
-          {jobs.length > 0 ? (
+          {jobsError ? (
+            <p role="alert" className="mt-6 text-red-600">{jobsError}</p>
+          ) : jobs.length > 0 ? (
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
 
@@ -357,7 +389,9 @@ function CompanyDetail() {
           </div>
 
 
-          {reviews.length > 0 ? (
+          {reviewsError ? (
+            <p role="alert" className="mt-6 text-red-600">{reviewsError}</p>
+          ) : reviews.length > 0 ? (
 
             <div className="mt-6 space-y-6">
 

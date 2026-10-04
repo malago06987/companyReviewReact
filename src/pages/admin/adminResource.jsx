@@ -21,10 +21,17 @@ function readPath(object, path) {
 function AdminResource({
   title,
   endpoint,
+  listEndpoint = endpoint,
   idField,
   fields,
   columns,
   canCreate = true,
+  canEdit = true,
+  approvalWorkflow = false,
+  authorizationDocumentEndpoint,
+  documentRoute = 'authorization-document',
+  documentAvailabilityField = 'has_authorization_document',
+  documentNotFoundMessage = 'ไม่พบเอกสารยืนยันสิทธิ์ของรายการนี้',
   note
 }) {
   const [items, setItems] = useState([])
@@ -36,6 +43,7 @@ function AdminResource({
   const [lastPage, setLastPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [openingDocumentId, setOpeningDocumentId] = useState(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -49,7 +57,7 @@ function AdminResource({
     try {
       setLoading(true)
       setError('')
-      const response = await axios.get(`${API_URL}/${endpoint}`, {
+      const response = await axios.get(`${API_URL}/${listEndpoint}`, {
         ...config,
         params: { page: requestedPage }
       })
@@ -178,6 +186,76 @@ function AdminResource({
     }
   }
 
+  const updateApproval = async (item, approvalStatus) => {
+    const action = approvalStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'
+    let rejectionReason = ''
+    if (approvalStatus === 'rejected') {
+      rejectionReason = window.prompt('ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ)')
+      if (rejectionReason === null) return
+    }
+
+    if (!window.confirm(`ยืนยัน${action}${title}รายการนี้หรือไม่?`)) {
+      return
+    }
+
+    try {
+      setError('')
+      setMessage('')
+      await axios.patch(
+        `${API_URL}/admin/${endpoint}/${item[idField]}/approval`,
+        { approval_status: approvalStatus, rejection_reason: rejectionReason },
+        config
+      )
+      setMessage(`${action}${title}เรียบร้อยแล้ว`)
+      await loadItems(page)
+    } catch (requestError) {
+      console.error(requestError)
+      const validationErrors = requestError.response?.data?.errors
+      setError(
+        validationErrors
+          ? Object.values(validationErrors).flat().join(' ')
+          : requestError.response?.data?.message || `ไม่สามารถ${action}${title}ได้`
+      )
+    }
+  }
+
+  const openDocument = async (item) => {
+    const preview = window.open('', '_blank')
+    if (preview) {
+      preview.opener = null
+    }
+
+    try {
+      setError('')
+      setOpeningDocumentId(item[idField])
+      const response = await axios.get(
+        `${API_URL}/${authorizationDocumentEndpoint}/${item[idField]}/${documentRoute}`,
+        { ...config, responseType: 'blob' }
+      )
+      const documentBlob = new Blob([response.data], {
+        type: response.headers['content-type'] || 'application/octet-stream'
+      })
+      const documentUrl = URL.createObjectURL(documentBlob)
+      if (preview) {
+        preview.location.href = documentUrl
+      } else {
+        const downloadLink = document.createElement('a')
+        downloadLink.href = documentUrl
+        downloadLink.download = `${documentRoute}-${item[idField]}`
+        downloadLink.click()
+      }
+      window.setTimeout(() => URL.revokeObjectURL(documentUrl), 60_000)
+    } catch (requestError) {
+      preview?.close()
+      console.error(requestError)
+      setError(requestError.response?.status === 404
+        ? documentNotFoundMessage
+        : requestError.response?.data?.message || 'ไม่สามารถเปิดเอกสารแนบได้')
+    } finally {
+      setOpeningDocumentId(null)
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -291,18 +369,54 @@ function AdminResource({
                           alt={column.label}
                           className="h-12 w-12 rounded object-cover"
                         />
+                      ) : column.type === 'approvalStatus' ? (
+                        {
+                          pending: 'รออนุมัติ',
+                          approved: 'อนุมัติแล้ว',
+                          rejected: 'ปฏิเสธ'
+                        }[readPath(item, column.path)] || '-'
                       ) : String(readPath(item, column.path) ?? '-')}
                     </td>
                   ))}
                   <td className="whitespace-nowrap px-4 py-3">
-                    <button
-                      disabled={loadingOptions || requiredOptionsUnavailable}
-                      onClick={() => startEdit(item)}
-                      className="mr-3 text-blue-600 hover:underline disabled:opacity-50"
-                    >
-                      แก้ไข
-                    </button>
+                    {canEdit && (
+                      <button
+                        disabled={loadingOptions || requiredOptionsUnavailable}
+                        onClick={() => startEdit(item)}
+                        className="mr-3 text-blue-600 hover:underline disabled:opacity-50"
+                      >
+                        แก้ไข
+                      </button>
+                    )}
                     <button onClick={() => deleteItem(item)} className="text-red-600 hover:underline">ลบ</button>
+                    {approvalWorkflow && item.approval_status === 'pending' && (
+                      <span className="ml-3 inline-flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => updateApproval(item, 'approved')}
+                          className="text-green-700 hover:underline"
+                        >
+                          อนุมัติ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateApproval(item, 'rejected')}
+                          className="text-orange-700 hover:underline"
+                        >
+                          ปฏิเสธ
+                        </button>
+                      </span>
+                    )}
+                    {authorizationDocumentEndpoint && item[documentAvailabilityField] && (
+                      <button
+                        type="button"
+                        disabled={openingDocumentId === item[idField]}
+                        onClick={() => openDocument(item)}
+                        className="ml-3 text-indigo-700 hover:underline disabled:opacity-50"
+                      >
+                        {openingDocumentId === item[idField] ? 'กำลังเปิด...' : 'ดูเอกสาร'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

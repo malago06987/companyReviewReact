@@ -4,6 +4,14 @@ import axios from 'axios'
 
 const API_URL = 'http://127.0.0.1:8000/api'
 
+function approvalStatusLabel(status) {
+  return {
+    pending: 'รอ Admin อนุมัติ',
+    approved: 'อนุมัติแล้ว',
+    rejected: 'ถูกปฏิเสธ'
+  }[status] || 'ไม่ทราบสถานะ'
+}
+
 function Profile() {
   const navigate = useNavigate()
 
@@ -13,6 +21,10 @@ function Profile() {
   const [reviews, setReviews] = useState([])
   const [reviewsLoading, setReviewsLoading] = useState(true)
   const [reviewsError, setReviewsError] = useState('')
+  const [submittedCompanies, setSubmittedCompanies] = useState([])
+  const [submittedJobs, setSubmittedJobs] = useState([])
+  const [submissionsLoading, setSubmissionsLoading] = useState(true)
+  const [submissionsError, setSubmissionsError] = useState('')
   const [editingReviewId, setEditingReviewId] = useState(null)
   const [reviewForm, setReviewForm] = useState(null)
   const [reviewMessage, setReviewMessage] = useState('')
@@ -52,6 +64,34 @@ function Profile() {
     }
   }
 
+  const fetchSubmissions = async () => {
+    const token = localStorage.getItem('access_token')
+    const config = { headers: { Authorization: `Bearer ${token}` } }
+
+    try {
+      setSubmissionsLoading(true)
+      setSubmissionsError('')
+      const [companiesResponse, jobsResponse] = await Promise.all([
+        axios.get(`${API_URL}/my/companies`, config),
+        axios.get(`${API_URL}/my/jobs`, config)
+      ])
+      const companies = companiesResponse.data?.data ?? companiesResponse.data
+      const jobs = jobsResponse.data?.data ?? jobsResponse.data
+      if (!Array.isArray(companies) || !Array.isArray(jobs)) {
+        throw new TypeError('Expected submitted records to contain collections.')
+      }
+      setSubmittedCompanies(companies)
+      setSubmittedJobs(jobs)
+    } catch (requestError) {
+      console.error(requestError)
+      setSubmissionsError(
+        requestError.response?.data?.message || 'ไม่สามารถโหลดสถานะข้อมูลที่คุณส่งได้'
+      )
+    } finally {
+      setSubmissionsLoading(false)
+    }
+  }
+
   const fetchUser = async () => {
     const token = localStorage.getItem('access_token')
 
@@ -74,7 +114,10 @@ function Profile() {
       )
 
       setUser(response.data)
-      await fetchReviews(response.data.user_id)
+      await Promise.all([
+        fetchReviews(response.data.user_id),
+        fetchSubmissions()
+      ])
 
       localStorage.setItem(
         'user',
@@ -147,10 +190,14 @@ function Profile() {
         reviewForm,
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      setReviews((current) => current.filter((review) => review.review_id !== editingReviewId))
+      setReviews((current) => current.map((review) => (
+        review.review_id === editingReviewId
+          ? { ...review, ...reviewForm }
+          : review
+      )))
       setEditingReviewId(null)
       setReviewForm(null)
-      setReviewMessage('บันทึกรีวิวแล้ว และส่งกลับไปรอตรวจสอบอีกครั้ง')
+      setReviewMessage('บันทึกรีวิวแล้ว และแสดงบนหน้าบริษัททันที')
     } catch (requestError) {
       console.error(requestError)
       setReviewsError(requestError.response?.data?.message || 'ไม่สามารถแก้ไขรีวิวได้')
@@ -347,16 +394,76 @@ function Profile() {
         </section>
 
         <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900">รายการที่ฉันส่ง</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            บริษัทและประกาศงานจะแสดงต่อสาธารณะหลัง Admin อนุมัติแล้ว
+          </p>
+          {submissionsError && (
+            <p role="alert" className="mt-4 text-red-600">{submissionsError}</p>
+          )}
+          {submissionsLoading ? (
+            <p className="mt-5 text-gray-500">กำลังโหลดรายการที่ส่ง...</p>
+          ) : (
+            <div className="mt-5 grid gap-6 md:grid-cols-2">
+              <div>
+                <h3 className="font-semibold text-gray-800">บริษัท</h3>
+                {submittedCompanies.length === 0 ? (
+                  <p className="mt-3 text-sm text-gray-500">ยังไม่มีข้อมูลบริษัทที่ส่ง</p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {submittedCompanies.map((company) => (
+                      <li key={company.company_id} className="rounded-lg border p-4">
+                        <p className="font-medium text-gray-900">{company.company_name}</p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          สถานะ: {approvalStatusLabel(company.approval_status)}
+                        </p>
+                        {company.rejection_reason && (
+                          <p className="mt-2 text-sm text-red-700">
+                            เหตุผลที่ปฏิเสธ: {company.rejection_reason}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">ประกาศงาน</h3>
+                {submittedJobs.length === 0 ? (
+                  <p className="mt-3 text-sm text-gray-500">ยังไม่มีประกาศงานที่ส่ง</p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {submittedJobs.map((job) => (
+                      <li key={job.job_id} className="rounded-lg border p-4">
+                        <p className="font-medium text-gray-900">{job.job_title}</p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {job.company?.company_name || 'ไม่ระบุบริษัท'} · สถานะ: {approvalStatusLabel(job.approval_status)}
+                        </p>
+                        {job.rejection_reason && (
+                          <p className="mt-2 text-sm text-red-700">
+                            เหตุผลที่ปฏิเสธ: {job.rejection_reason}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900">รีวิวของฉัน</h2>
           <p className="mt-2 text-sm text-gray-500">
-            API ปัจจุบันแสดงเฉพาะรีวิวที่อนุมัติแล้ว รีวิวที่กำลังรอตรวจสอบจึงยังไม่แสดงที่นี่
+            รีวิวที่ส่งแล้วจะแสดงบนหน้าบริษัททันที
           </p>
           {reviewsError && <p role="alert" className="mt-4 text-red-600">{reviewsError}</p>}
           {reviewMessage && <p role="status" className="mt-4 text-green-700">{reviewMessage}</p>}
           {reviewsLoading ? (
             <p className="mt-5 text-gray-500">กำลังโหลดรีวิว...</p>
           ) : reviews.length === 0 ? (
-            <p className="mt-5 text-gray-500">ไม่พบรีวิวที่อนุมัติแล้ว</p>
+            <p className="mt-5 text-gray-500">คุณยังไม่มีรีวิว</p>
           ) : (
             <div className="mt-5 space-y-4">
               {reviews.map((review) => (

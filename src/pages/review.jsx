@@ -4,6 +4,33 @@ import axios from 'axios'
 
 const API_URL = 'http://127.0.0.1:8000/api'
 
+function Rating({ label, field, value, onRate }) {
+  return (
+    <div className="rounded-xl border border-gray-200 p-5">
+      <p className="font-semibold text-gray-900">{label}</p>
+      <div className="mt-4 flex gap-2">
+        {[1, 2, 3, 4, 5].map((number) => (
+          <button
+            key={number}
+            type="button"
+            aria-label={`${label} ${number} คะแนน`}
+            aria-pressed={value === number}
+            onClick={() => onRate(field, number)}
+            className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-medium transition ${
+              value >= number
+                ? 'border-yellow-400 bg-yellow-400 text-white'
+                : 'border-gray-300 bg-white text-gray-500 hover:border-yellow-400'
+            }`}
+          >
+            {number}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-gray-500">คะแนน {value || 0} / 5</p>
+    </div>
+  )
+}
+
 function WriteReview() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -23,6 +50,7 @@ function WriteReview() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [submittedReview, setSubmittedReview] = useState(false)
 
   useEffect(() => {
     if (!companyId) {
@@ -96,7 +124,7 @@ function WriteReview() {
       setSubmitting(true)
       setError('')
 
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/reviews`,
         {
           company_id: Number(companyId),
@@ -112,8 +140,10 @@ function WriteReview() {
           }
         }
       )
-
-      navigate(`/companies/${companyId}`)
+      if (response.status !== 201) {
+        throw new Error(`Unexpected review submission status: ${response.status}`)
+      }
+      setSubmittedReview(true)
 
     } catch (error) {
       console.error(error)
@@ -128,6 +158,10 @@ function WriteReview() {
 
       if (error.response?.data?.errors) {
         const errors = error.response.data.errors
+        if (errors.company_id) {
+          setError('คุณเคยรีวิวบริษัทนี้แล้ว หนึ่งบัญชีสามารถรีวิวแต่ละบริษัทได้หนึ่งครั้ง')
+          return
+        }
         const firstError = Object.values(errors)[0]
 
         if (Array.isArray(firstError)) {
@@ -146,43 +180,6 @@ function WriteReview() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  const Rating = ({ label, field }) => {
-    return (
-      <div className="rounded-xl border border-gray-200 p-5">
-
-        <p className="font-semibold text-gray-900">
-          {label}
-        </p>
-
-        <div className="mt-4 flex gap-2">
-
-          {[1, 2, 3, 4, 5].map((number) => (
-
-            <button
-              key={number}
-              type="button"
-              onClick={() => handleRating(field, number)}
-              className={`flex h-10 w-10 items-center justify-center rounded-full border text-sm font-medium transition ${
-                form[field] >= number
-                  ? 'border-yellow-400 bg-yellow-400 text-white'
-                  : 'border-gray-300 bg-white text-gray-500 hover:border-yellow-400'
-              }`}
-            >
-              {number}
-            </button>
-
-          ))}
-
-        </div>
-
-        <p className="mt-2 text-xs text-gray-500">
-          คะแนน {form[field] || 0} / 5
-        </p>
-
-      </div>
-    )
   }
 
   if (loading) {
@@ -210,6 +207,25 @@ function WriteReview() {
           ← กลับไปหน้าบริษัท
         </Link>
 
+      </div>
+    )
+  }
+
+  if (submittedReview) {
+    return (
+      <div className="bg-gray-50 px-6 py-16">
+        <div className="mx-auto max-w-2xl rounded-xl bg-white p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-gray-900">ส่งรีวิวเรียบร้อยแล้ว</h1>
+          <p className="mt-3 text-gray-600">
+            รีวิวของคุณเผยแพร่บนหน้าบริษัทแล้ว ขอบคุณที่แบ่งปันประสบการณ์
+          </p>
+          <Link
+            to={`/companies/${companyId}`}
+            className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
+          >
+            กลับไปหน้าบริษัท
+          </Link>
+        </div>
       </div>
     )
   }
@@ -287,21 +303,29 @@ function WriteReview() {
               <Rating
                 label="ชีวิตดี"
                 field="rating_life"
+                value={form.rating_life}
+                onRate={handleRating}
               />
 
               <Rating
                 label="งานดี"
                 field="rating_work"
+                value={form.rating_work}
+                onRate={handleRating}
               />
 
               <Rating
                 label="เงินดี"
                 field="rating_money"
+                value={form.rating_money}
+                onRate={handleRating}
               />
 
               <Rating
                 label="สังคมดี"
                 field="rating_society"
+                value={form.rating_society}
+                onRate={handleRating}
               />
 
             </div>

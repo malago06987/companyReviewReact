@@ -3,15 +3,24 @@ import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import CompanyList from '../../components/company/CompanyList'
 import JobCard from '../../components/job/JobCard'
+import ReviewCard from '../../components/review/ReviewCard'
 
 const API_URL = 'http://127.0.0.1:8000/api'
+
+function getSalaryAmount(salary) {
+  const amount = String(salary ?? '').match(/\d[\d,]*(?:\.\d+)?/)
+  return amount ? Number(amount[0].replaceAll(',', '')) : null
+}
 
 function Home() {
   const navigate = useNavigate()
   const [companies, setCompanies] = useState([])
   const [jobs, setJobs] = useState([])
+  const [reviews, setReviews] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [reviewsLoading, setReviewsLoading] = useState(true)
+  const [reviewsError, setReviewsError] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -35,11 +44,27 @@ function Home() {
       }
       setCompanies(companiesData)
       setJobs(jobsData)
+
+      try {
+        const reviewsResponse = await axios.get(`${API_URL}/reviews`)
+        const reviewsData = reviewsResponse.data?.data ?? reviewsResponse.data
+        if (!Array.isArray(reviewsData)) {
+          throw new TypeError('Expected the reviews API response to contain a collection.')
+        }
+        setReviews(reviewsData)
+      } catch (requestError) {
+        console.error(requestError)
+        setReviewsError('ไม่สามารถโหลดรีวิวจากพนักงานได้')
+      } finally {
+        setReviewsLoading(false)
+      }
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลได้')
+      setReviewsError('ไม่สามารถโหลดรีวิวจากพนักงานได้')
     } finally {
       setLoading(false)
+      setReviewsLoading(false)
     }
   }
 
@@ -52,6 +77,25 @@ function Home() {
 
     navigate(`/companies?search=${encodeURIComponent(search)}`)
   }
+
+  const popularCompanies = [...companies].sort(
+    (first, second) => (Number(second.rating?.overall) || 0) - (Number(first.rating?.overall) || 0)
+  )
+  const highestSalaryJobs = [...jobs].sort((first, second) => {
+    const firstSalary = getSalaryAmount(first.salary)
+    const secondSalary = getSalaryAmount(second.salary)
+    if (firstSalary === null) return secondSalary === null ? 0 : 1
+    if (secondSalary === null) return -1
+    return secondSalary - firstSalary
+  })
+  const latestReviews = [...reviews]
+    .sort((first, second) => {
+      const firstDate = Date.parse(first.created_at || '')
+      const secondDate = Date.parse(second.created_at || '')
+      return (Number.isFinite(secondDate) ? secondDate : 0)
+        - (Number.isFinite(firstDate) ? firstDate : 0)
+    })
+    .slice(0, 6)
 
   return (
     <div className="bg-white">
@@ -195,10 +239,46 @@ function Home() {
 
           {!loading && !error && (
             <div className="mt-8">
-              <CompanyList items={companies.slice(0, 6)} />
+              <CompanyList items={popularCompanies.slice(0, 6)} />
             </div>
           )}
 
+        </div>
+      </section>
+
+
+      {/* Employee Reviews */}
+      <section className="bg-gray-50 px-6 py-16">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">
+                รีวิวจากพนักงาน
+              </h2>
+              <p className="mt-2 text-gray-600">
+                ประสบการณ์และคะแนนจากคนทำงานจริง
+              </p>
+            </div>
+            <Link to="/companies" className="text-blue-600 hover:underline">
+              ดูรีวิวบริษัททั้งหมด →
+            </Link>
+          </div>
+
+          {reviewsLoading ? (
+            <p className="mt-8 text-center text-gray-500">กำลังโหลดรีวิว...</p>
+          ) : reviewsError ? (
+            <p role="alert" className="mt-8 text-center text-red-500">{reviewsError}</p>
+          ) : latestReviews.length === 0 ? (
+            <p className="mt-8 rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm">
+              ยังไม่มีรีวิวจากพนักงาน
+            </p>
+          ) : (
+            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {latestReviews.map((review) => (
+                <ReviewCard key={review.review_id} review={review} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -231,7 +311,7 @@ function Home() {
 
           {!loading && !error && (
             <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {jobs.slice(0, 6).map((job) => (
+              {highestSalaryJobs.slice(0, 6).map((job) => (
                 <JobCard key={job.job_id} job={job} />
               ))}
             </div>

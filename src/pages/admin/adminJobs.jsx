@@ -5,8 +5,11 @@ function AdminJobs() {
     <AdminResource
       title="ตำแหน่งงาน"
       endpoint="jobs"
+      listEndpoint="admin/jobs"
       idField="job_id"
-      note="API ปัจจุบันแสดงเฉพาะงานที่มีสถานะ open"
+      approvalWorkflow
+      authorizationDocumentEndpoint="admin/jobs"
+      note="ตรวจสอบและอนุมัติประกาศงานก่อนแสดงในหน้าค้นหางาน"
       fields={[
         {
           name: 'company_id',
@@ -47,7 +50,10 @@ function AdminJobs() {
         { label: 'ตำแหน่ง', path: 'job_title' },
         { label: 'บริษัท', path: 'company.company_name' },
         { label: 'สายงาน', path: 'job_function.function_name' },
-        { label: 'สถานะ', path: 'status' }
+        { label: 'สถานะประกาศ', path: 'status' },
+        { label: 'สถานะอนุมัติ', path: 'approval_status', type: 'approvalStatus' },
+        { label: 'ผู้ส่ง (User ID)', path: 'submitted_by' },
+        { label: 'เหตุผลปฏิเสธ', path: 'rejection_reason' }
       ]}
     />
   )

@@ -5,7 +5,13 @@ function AdminCompanies() {
     <AdminResource
       title="บริษัท"
       endpoint="companies"
+      listEndpoint="admin/companies"
       idField="company_id"
+      approvalWorkflow
+      authorizationDocumentEndpoint="admin/companies"
+      documentRoute="registration-document"
+      documentAvailabilityField="has_registration_document"
+      documentNotFoundMessage="ไม่พบเอกสารจดทะเบียนของบริษัทนี้"
       fields={[
         { name: 'company_name', label: 'ชื่อบริษัท', required: true },
         { name: 'logo_image', label: 'โลโก้บริษัท', type: 'file', accept: 'image/jpeg,image/png' },
@@ -28,7 +34,9 @@ function AdminCompanies() {
         { label: 'โลโก้', path: 'logo_image', type: 'image' },
         { label: 'ชื่อบริษัท', path: 'company_name' },
         { label: 'อุตสาหกรรม', path: 'industry' },
-        { label: 'ที่อยู่', path: 'address' }
+        { label: 'ที่อยู่', path: 'address' },
+        { label: 'สถานะอนุมัติ', path: 'approval_status', type: 'approvalStatus' },
+        { label: 'ผู้ส่ง (User ID)', path: 'submitted_by' }
       ]}
     />
   )
