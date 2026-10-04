@@ -36,7 +36,7 @@ function AdminCompanies() {
         { label: 'อุตสาหกรรม', path: 'industry' },
         { label: 'ที่อยู่', path: 'address' },
         { label: 'สถานะอนุมัติ', path: 'approval_status', type: 'approvalStatus' },
-        { label: 'ผู้ส่ง (User ID)', path: 'submitted_by' }
+        { label: 'userID', path: 'submitted_by' }
       ]}
     />
   )

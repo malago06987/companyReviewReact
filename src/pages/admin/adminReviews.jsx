@@ -8,7 +8,6 @@ function AdminReviews() {
       idField="review_id"
       canCreate={false}
       canEdit={false}
-      note="รีวิวเผยแพร่ทันทีหลังผู้ใช้ส่ง สามารถลบรีวิวที่ไม่เหมาะสมได้"
       fields={[]}
       columns={[
         { label: 'บริษัท', path: 'company.company_name' },

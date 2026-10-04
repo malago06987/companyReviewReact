@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import axios from 'axios'
 
 const API_URL = 'http://127.0.0.1:8000/api'
 
 function JobDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
 
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [resume, setResume] = useState(null)
+  const [coverLetter, setCoverLetter] = useState('')
+  const [applying, setApplying] = useState(false)
+  const [applicationError, setApplicationError] = useState('')
+  const [applicationMessage, setApplicationMessage] = useState('')
 
   useEffect(() => {
     fetchJob()
@@ -33,14 +39,57 @@ function JobDetail() {
     }
   }
 
+  const handleApply = async (event) => {
+    event.preventDefault()
+    const token = localStorage.getItem('access_token')
+
+    if (!token) {
+      navigate('/login')
+      return
+    }
+
+    if (!resume) {
+      setApplicationError('กรุณาเลือกเรซูเมก่อนส่งใบสมัคร')
+      return
+    }
+
+    if (resume.size > 10 * 1024 * 1024) {
+      setApplicationError('ขนาดเรซูเมต้องไม่เกิน 10 MB')
+      return
+    }
+
+    const application = new FormData()
+    application.append('resume', resume)
+    if (coverLetter.trim()) {
+      application.append('cover_letter', coverLetter.trim())
+    }
+
+    try {
+      setApplying(true)
+      setApplicationError('')
+      setApplicationMessage('')
+      await axios.post(`${API_URL}/jobs/${id}/applications`, application, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      event.currentTarget.reset()
+      setResume(null)
+      setCoverLetter('')
+      setApplicationMessage('ส่งใบสมัครเรียบร้อยแล้ว')
+    } catch (requestError) {
+      console.error(requestError)
+      setApplicationError(
+        requestError.response?.data?.errors?.resume?.[0]
+          || requestError.response?.data?.errors?.cover_letter?.[0]
+          || requestError.response?.data?.message
+          || 'ไม่สามารถส่งใบสมัครได้ กรุณาลองใหม่อีกครั้ง'
+      )
+    } finally {
+      setApplying(false)
+    }
+  }
+
   if (loading) {
-    return (
-      <div className="px-6 py-16 text-center">
-        <p className="text-gray-500">
-          กำลังโหลดข้อมูลตำแหน่งงาน...
-        </p>
-      </div>
-    )
+    return null
   }
 
   if (error) {
@@ -266,16 +315,56 @@ function JobDetail() {
 
 
         {/* Apply */}
-        <section className="mt-6 rounded-xl bg-blue-600 p-8 text-center text-white">
-
-          <h2 className="text-2xl font-bold">
-            สนใจตำแหน่งงานนี้?
+        <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-gray-900">
+            ส่งเรซูเม่สมัครงาน
           </h2>
-
-          <p className="mt-2 text-blue-100">
-            ติดต่อบริษัทตามช่องทางการสมัครงานที่บริษัทกำหนด
+          <p className="mt-2 text-sm text-gray-600">
+            อัปโหลดเรซูเม่ของคุณเพื่อสมัครตำแหน่งนี้ (รองรับ PDF, DOC และ DOCX)
           </p>
-
+          {applicationError && (
+            <p role="alert" className="mt-4 text-sm text-red-600">{applicationError}</p>
+          )}
+          {applicationMessage && (
+            <p role="status" className="mt-4 text-sm text-green-700">{applicationMessage}</p>
+          )}
+          {job.status === 'open' ? (
+            <form onSubmit={handleApply} className="mt-5 space-y-4">
+              <label className="block text-sm font-medium text-gray-700">
+                เรซูเม่
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={(event) => {
+                    setResume(event.target.files?.[0] || null)
+                    setApplicationError('')
+                  }}
+                  className="mt-2 block w-full rounded-lg border border-gray-300 p-3 text-sm"
+                />
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
+                จดหมายสมัครงาน (ไม่บังคับ)
+                <textarea
+                  rows="4"
+                  value={coverLetter}
+                  onChange={(event) => setCoverLetter(event.target.value)}
+                  className="mt-2 block w-full rounded-lg border border-gray-300 px-3 py-2"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={applying}
+                className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                ส่งใบสมัคร
+              </button>
+            </form>
+          ) : (
+            <p className="mt-4 text-sm text-gray-500">
+              ตำแหน่งงานนี้ปิดรับสมัครแล้ว
+            </p>
+          )}
         </section>
 
       </div>

@@ -336,7 +336,7 @@ function AdminResource({
           ))}
           <div className="flex gap-3 md:col-span-2">
             <button disabled={saving} className="rounded-lg bg-blue-600 px-5 py-2 text-white disabled:opacity-60">
-              {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+              บันทึก
             </button>
             <button type="button" onClick={resetForm} className="rounded-lg border px-5 py-2 text-gray-700">
               ยกเลิก
@@ -346,9 +346,7 @@ function AdminResource({
       )}
 
       <div className="mt-6 overflow-x-auto rounded-xl bg-white shadow-sm">
-        {loading ? (
-          <p className="p-8 text-center text-gray-500">กำลังโหลดข้อมูล...</p>
-        ) : items.length === 0 ? (
+        {loading ? null : items.length === 0 ? (
           <p className="p-8 text-center text-gray-500">ไม่พบข้อมูล</p>
         ) : (
           <table className="w-full min-w-max text-left text-sm">
@@ -414,7 +412,7 @@ function AdminResource({
                         onClick={() => openDocument(item)}
                         className="ml-3 text-indigo-700 hover:underline disabled:opacity-50"
                       >
-                        {openingDocumentId === item[idField] ? 'กำลังเปิด...' : 'ดูเอกสาร'}
+                        ดูเอกสาร
                       </button>
                     )}
                   </td>

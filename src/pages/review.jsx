@@ -183,13 +183,7 @@ function WriteReview() {
   }
 
   if (loading) {
-    return (
-      <div className="px-6 py-16 text-center">
-        <p className="text-gray-500">
-          กำลังโหลดข้อมูลบริษัท...
-        </p>
-      </div>
-    )
+    return null
   }
 
   if (error && !company) {
@@ -368,9 +362,7 @@ function WriteReview() {
               disabled={submitting}
               className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting
-                ? 'กำลังส่งรีวิว...'
-                : 'ส่งรีวิว'}
+              ส่งรีวิว
             </button>
 
           </div>

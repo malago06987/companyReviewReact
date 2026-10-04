@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import CompanyList from '../../components/company/CompanyList'
 
@@ -10,6 +10,8 @@ function Companies() {
   const [companies, setCompanies] = useState([])
   const [industries, setIndustries] = useState([])
   const [selectedIndustry, setSelectedIndustry] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState(searchParams.get('search') || '')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
@@ -29,8 +31,10 @@ function Companies() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetchCompanies()
-  }, [])
+    const keyword = searchParams.get('search') || ''
+    setSearch(keyword)
+    fetchCompanies(keyword)
+  }, [searchParams])
 
   useEffect(() => {
     axios.get(`${API_URL}/industries`).then((response) => {
@@ -45,12 +49,14 @@ function Companies() {
     })
   }, [])
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = async (keyword) => {
     try {
       setLoading(true)
       setError('')
 
-      const response = await axios.get(`${API_URL}/companies`)
+      const response = await axios.get(`${API_URL}/companies`, {
+        params: { search: keyword || undefined }
+      })
 
       const companiesData = response.data?.data ?? response.data
       if (!Array.isArray(companiesData)) {
@@ -127,9 +133,20 @@ function Companies() {
     }
   }
 
-  const filteredCompanies = selectedIndustry
-    ? companies.filter((company) => company.industry === selectedIndustry)
-    : companies
+  const handleSearch = (event) => {
+    event.preventDefault()
+    const keyword = search.trim()
+    setSearchParams(keyword ? { search: keyword } : {})
+  }
+
+  const filteredCompanies = companies.filter((company) => {
+    const matchesName = !search.trim()
+      || company.company_name?.toLowerCase().includes(search.trim().toLowerCase())
+    const matchesIndustry = !selectedIndustry
+      || company.industry?.industry_name === selectedIndustry
+      || company.industry === selectedIndustry
+    return matchesName && matchesIndustry
+  })
 
   return (
     <div className="bg-gray-50 px-6 py-10">
@@ -137,17 +154,17 @@ function Companies() {
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            บริษัท
-          </h1>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              บริษัท
+            </h1>
 
-          <p className="mt-2 text-gray-600">
-            ค้นหาและดูข้อมูลบริษัทจากประสบการณ์ของคนทำงาน
-          </p>
-        </div>
+            <p className="mt-2 text-gray-600">
+              ค้นหาและดูข้อมูลบริษัทจากประสบการณ์ของคนทำงาน
+            </p>
+          </div>
 
-        <div className="mt-6">
           {localStorage.getItem('access_token') ? (
             <button
               type="button"
@@ -170,6 +187,22 @@ function Companies() {
           )}
         </div>
 
+        <form onSubmit={handleSearch} className="mt-6 flex max-w-2xl gap-3">
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="ค้นหาชื่อบริษัท"
+            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
+          >
+            ค้นหา
+          </button>
+        </form>
+
         {createMessage && (
           <div role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-green-700">
             <p>{createMessage}</p>
@@ -190,9 +223,7 @@ function Companies() {
             onSubmit={handleCreateCompany}
             className="mt-5 grid gap-4 rounded-xl bg-white p-6 shadow-sm md:grid-cols-2"
           >
-            <p className="text-sm text-amber-800 md:col-span-2">
-              ข้อมูลบริษัทจะรอ Admin ตรวจสอบและอนุมัติก่อนแสดงบนเว็บไซต์
-            </p>
+      
             <label className="text-sm font-medium text-gray-700">
               ชื่อบริษัท *
               <input
@@ -287,7 +318,7 @@ function Companies() {
               disabled={creating || industries.length === 0}
               className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-50 md:col-span-2"
             >
-              {creating ? 'กำลังส่งข้อมูล...' : 'ส่งข้อมูลบริษัท'}
+              ส่งข้อมูลบริษัท
             </button>
           </form>
         )}
@@ -307,14 +338,6 @@ function Companies() {
             ))}
           </select>
         </label>
-
-
-        {/* Loading */}
-        {loading && (
-          <div className="py-16 text-center text-gray-500">
-            กำลังโหลดข้อมูลบริษัท...
-          </div>
-        )}
 
 
         {/* Error */}

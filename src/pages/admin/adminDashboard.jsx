@@ -73,15 +73,12 @@ function AdminDashboard() {
       <div className="mt-4 rounded-xl bg-white p-5 shadow-sm">
         <p className="text-sm text-gray-500">คะแนนเฉลี่ยรวมของบริษัทที่มีคะแนน</p>
         <p className="mt-2 text-3xl font-bold text-yellow-600">
-          {averageRating === null ? 'กำลังคำนวณ...' : `★ ${averageRating.toFixed(1)} / 5`}
+          {averageRating === null ? '—' : `★ ${averageRating.toFixed(1)} / 5`}
         </p>
         <p className="mt-2 text-xs text-gray-500">
           คำนวณค่าเฉลี่ยจากคะแนนรวมของแต่ละบริษัท ไม่ใช่ค่าเฉลี่ยถ่วงตามจำนวนรีวิว
         </p>
       </div>
-      <p className="mt-6 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
-        ตัวเลขงานและรีวิวสะท้อนเฉพาะข้อมูลที่ API ส่งกลับ (งานที่เปิดรับและรีวิวที่อนุมัติ)
-      </p>
     </div>
   )
 }

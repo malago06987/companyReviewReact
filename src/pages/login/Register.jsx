@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
@@ -17,6 +17,15 @@ function Register() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [profileImagePreview, setProfileImagePreview] = useState('')
+
+  useEffect(() => {
+    return () => {
+      if (profileImagePreview) {
+        URL.revokeObjectURL(profileImagePreview)
+      }
+    }
+  }, [profileImagePreview])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -28,10 +37,12 @@ function Register() {
   }
 
   const handleFileChange = (e) => {
+    const file = e.target.files[0] || null
     setForm({
       ...form,
-      profile_image: e.target.files[0] || null
+      profile_image: file
     })
+    setProfileImagePreview(file ? URL.createObjectURL(file) : '')
   }
 
   const handleSubmit = async (e) => {
@@ -234,27 +245,61 @@ function Register() {
 
           {/* Profile Image */}
           <div>
+            <span className="block text-sm font-medium text-gray-700">
+              รูปโปรไฟล์ <span className="font-normal text-gray-400">(ไม่บังคับ)</span>
+            </span>
 
             <label
               htmlFor="profile_image"
-              className="block text-sm font-medium text-gray-700"
+              className="mt-2 flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 px-5 py-6 text-center transition hover:border-blue-400 hover:bg-blue-50 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200"
             >
-              รูปโปรไฟล์
+              {profileImagePreview ? (
+                <img
+                  src={profileImagePreview}
+                  alt="ตัวอย่างรูปโปรไฟล์"
+                  className="h-24 w-24 rounded-full border-4 border-white object-cover shadow"
+                />
+              ) : (
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    className="h-8 w-8"
+                  >
+                    <circle cx="12" cy="8" r="3.25" />
+                    <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+                    <circle cx="19" cy="18" r="3" fill="white" />
+                    <path d="M19 16.5v3M17.5 18h3" />
+                  </svg>
+                </span>
+              )}
+              <span className="mt-3 font-semibold text-gray-800">
+                {form.profile_image ? 'เลือกรูปอื่น' : 'คลิกเพื่อเลือกรูปโปรไฟล์'}
+              </span>
+              <span className="mt-1 text-xs text-gray-500">
+                หรือเลือกรูปจากอุปกรณ์ของคุณ
+              </span>
+              <input
+                id="profile_image"
+                name="profile_image"
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                onChange={handleFileChange}
+                className="sr-only"
+              />
             </label>
 
-            <input
-              id="profile_image"
-              name="profile_image"
-              type="file"
-              accept=".jpg,.jpeg,.png"
-              onChange={handleFileChange}
-              className="mt-2 block w-full text-sm text-gray-600"
-            />
-
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-2 text-center text-xs text-gray-500">
               รองรับ JPG, JPEG, PNG ขนาดไม่เกิน 2MB
             </p>
-
+            {form.profile_image && (
+              <p className="mt-2 truncate text-center text-sm text-blue-700" aria-live="polite">
+                เลือกแล้ว: {form.profile_image.name}
+              </p>
+            )}
           </div>
 
 
@@ -264,9 +309,7 @@ function Register() {
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading
-              ? 'กำลังสมัครสมาชิก...'
-              : 'สมัครสมาชิก'}
+            สมัครสมาชิก
           </button>
 
         </form>

@@ -223,13 +223,6 @@ function Home() {
           </div>
 
 
-          {loading && (
-            <p className="mt-8 text-center text-gray-500">
-              กำลังโหลดข้อมูล...
-            </p>
-          )}
-
-
           {error && (
             <p className="mt-8 text-center text-red-500">
               {error}
@@ -264,9 +257,7 @@ function Home() {
             </Link>
           </div>
 
-          {reviewsLoading ? (
-            <p className="mt-8 text-center text-gray-500">กำลังโหลดรีวิว...</p>
-          ) : reviewsError ? (
+          {reviewsLoading ? null : reviewsError ? (
             <p role="alert" className="mt-8 text-center text-red-500">{reviewsError}</p>
           ) : latestReviews.length === 0 ? (
             <p className="mt-8 rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm">

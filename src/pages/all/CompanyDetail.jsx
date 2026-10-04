@@ -83,13 +83,7 @@ function CompanyDetail() {
   }
 
   if (loading) {
-    return (
-      <div className="px-6 py-16 text-center">
-        <p className="text-gray-500">
-          กำลังโหลดข้อมูลบริษัท...
-        </p>
-      </div>
-    )
+    return null
   }
 
   if (error) {

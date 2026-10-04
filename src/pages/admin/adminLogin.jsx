@@ -68,7 +68,7 @@ function AdminLogin() {
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบผู้ดูแล'}
+            เข้าสู่ระบบผู้ดูแล
           </button>
         </form>
         <Link to="/login" className="mt-5 block text-center text-sm text-blue-600 hover:underline">

@@ -178,17 +178,17 @@ function Jobs() {
       <div className="mx-auto max-w-6xl">
 
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            ค้นหางาน
-          </h1>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              ค้นหางาน
+            </h1>
 
-          <p className="mt-2 text-gray-600">
-            ค้นหาตำแหน่งงานที่เปิดรับจากบริษัทต่าง ๆ
-          </p>
-        </div>
+            <p className="mt-2 text-gray-600">
+              ค้นหาตำแหน่งงานที่เปิดรับจากบริษัทต่าง ๆ
+            </p>
+          </div>
 
-        <div className="mt-6">
           {localStorage.getItem('access_token') ? (
             <button
               type="button"
@@ -231,7 +231,7 @@ function Jobs() {
             className="mt-5 grid gap-4 rounded-xl bg-white p-6 shadow-sm md:grid-cols-2"
           >
             <p className="text-sm text-amber-800 md:col-span-2">
-              แนบหลักฐานว่าได้รับอนุญาตให้ลงประกาศในนามบริษัทที่เลือก Admin จะตรวจสอบทั้งเอกสารและประกาศก่อนเผยแพร่
+              แนบหลักฐานว่าได้รับอนุญาตให้ลงประกาศในนามบริษัทที่เลือก
             </p>
             <label className="text-sm font-medium text-gray-700">
               บริษัท *
@@ -335,7 +335,7 @@ function Jobs() {
               }
               className="rounded-lg bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700 disabled:opacity-50 md:col-span-2"
             >
-              {creating ? 'กำลังส่งประกาศ...' : 'ส่งประกาศให้ Admin ตรวจสอบ'}
+              ลงประกาศงาน
             </button>
           </form>
         )}
@@ -357,14 +357,6 @@ function Jobs() {
             </select>
           </label>
         </div>
-
-
-        {/* Loading */}
-        {loading && (
-          <div className="py-16 text-center text-gray-500">
-            กำลังโหลดตำแหน่งงาน...
-          </div>
-        )}
 
 
         {/* Error */}

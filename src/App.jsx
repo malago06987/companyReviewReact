@@ -68,7 +68,7 @@ function AdminAccess() {
   }, [])
 
   if (access === 'checking') {
-    return <div className="px-6 py-16 text-center text-gray-500">กำลังตรวจสอบสิทธิ์...</div>
+    return null
   }
   if (access === 'login') {
     return <Navigate to="/admin/login" replace />

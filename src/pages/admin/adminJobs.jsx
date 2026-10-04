@@ -9,7 +9,6 @@ function AdminJobs() {
       idField="job_id"
       approvalWorkflow
       authorizationDocumentEndpoint="admin/jobs"
-      note="ตรวจสอบและอนุมัติประกาศงานก่อนแสดงในหน้าค้นหางาน"
       fields={[
         {
           name: 'company_id',
@@ -52,7 +51,7 @@ function AdminJobs() {
         { label: 'สายงาน', path: 'job_function.function_name' },
         { label: 'สถานะประกาศ', path: 'status' },
         { label: 'สถานะอนุมัติ', path: 'approval_status', type: 'approvalStatus' },
-        { label: 'ผู้ส่ง (User ID)', path: 'submitted_by' },
+        { label: 'userID', path: 'submitted_by' },
         { label: 'เหตุผลปฏิเสธ', path: 'rejection_reason' }
       ]}
     />

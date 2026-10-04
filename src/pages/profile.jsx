@@ -12,6 +12,78 @@ function approvalStatusLabel(status) {
   }[status] || 'ไม่ทราบสถานะ'
 }
 
+function formatApplicationDate(date) {
+  if (!date) {
+    return 'ไม่ระบุวันที่'
+  }
+
+  const parsedDate = new Date(date)
+  return Number.isNaN(parsedDate.getTime())
+    ? 'ไม่ระบุวันที่'
+    : parsedDate.toLocaleDateString('th-TH')
+}
+
+function ResumeButton({ resumeUrl }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const openResume = async () => {
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      setError('กรุณาเข้าสู่ระบบอีกครั้งเพื่อดูเรซูเม')
+      return
+    }
+
+    const resumeWindow = window.open('', '_blank')
+    if (!resumeWindow) {
+      setError('กรุณาอนุญาตป๊อปอัปเพื่อเปิดเรซูเม')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+
+      const apiOrigin = new URL(API_URL).origin
+      const url = new URL(resumeUrl, `${apiOrigin}/`)
+      if (url.origin !== apiOrigin) {
+        throw new Error('Resume URL must be on the API origin.')
+      }
+
+      const response = await axios.get(url.toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      })
+      if (response.data.type.includes('json')) {
+        throw new Error('The resume endpoint returned an error response.')
+      }
+      const objectUrl = URL.createObjectURL(response.data)
+      resumeWindow.location.replace(objectUrl)
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+    } catch (requestError) {
+      console.error(requestError)
+      resumeWindow.close()
+      setError('ไม่สามารถเปิดเรซูเมได้ กรุณาลองใหม่อีกครั้ง')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={openResume}
+        disabled={loading}
+        className="rounded border border-blue-600 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+      >
+        ดูเรซูเม
+      </button>
+      {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
+    </div>
+  )
+}
+
 function Profile() {
   const navigate = useNavigate()
 
@@ -25,6 +97,15 @@ function Profile() {
   const [submittedJobs, setSubmittedJobs] = useState([])
   const [submissionsLoading, setSubmissionsLoading] = useState(true)
   const [submissionsError, setSubmissionsError] = useState('')
+  const [activeApplicationTab, setActiveApplicationTab] = useState('mine')
+  const [myApplications, setMyApplications] = useState([])
+  const [myApplicationsLoading, setMyApplicationsLoading] = useState(true)
+  const [myApplicationsError, setMyApplicationsError] = useState('')
+  const [cancellingApplicationId, setCancellingApplicationId] = useState(null)
+  const [applicationActionMessage, setApplicationActionMessage] = useState('')
+  const [jobApplications, setJobApplications] = useState({})
+  const [jobApplicationsLoading, setJobApplicationsLoading] = useState(true)
+  const [jobApplicationsError, setJobApplicationsError] = useState('')
   const [updatingJobStatusId, setUpdatingJobStatusId] = useState(null)
   const [editingReviewId, setEditingReviewId] = useState(null)
   const [reviewForm, setReviewForm] = useState(null)
@@ -83,6 +164,7 @@ function Profile() {
       }
       setSubmittedCompanies(companies)
       setSubmittedJobs(jobs)
+      fetchApplicationsForJobs(jobs)
     } catch (requestError) {
       console.error(requestError)
       setSubmissionsError(
@@ -91,6 +173,111 @@ function Profile() {
     } finally {
       setSubmissionsLoading(false)
     }
+  }
+
+  const fetchMyApplications = async () => {
+    const token = localStorage.getItem('access_token')
+
+    try {
+      setMyApplicationsLoading(true)
+      setMyApplicationsError('')
+      const response = await axios.get(`${API_URL}/my/applications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const applications = response.data?.data ?? response.data
+      if (!Array.isArray(applications)) {
+        throw new TypeError('Expected applications API response to contain a collection.')
+      }
+      setMyApplications(applications)
+    } catch (requestError) {
+      console.error(requestError)
+      setMyApplicationsError(
+        requestError.response?.data?.message || 'ไม่สามารถโหลดรายการงานที่คุณสมัครได้'
+      )
+    } finally {
+      setMyApplicationsLoading(false)
+    }
+  }
+
+  const cancelApplication = async (applicationId) => {
+    if (!window.confirm('ยืนยันยกเลิกใบสมัครนี้หรือไม่? ระบบจะลบใบสมัครและไฟล์เรซูเมที่แนบไว้')) {
+      return
+    }
+
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      navigate('/login')
+      return
+    }
+
+    try {
+      setCancellingApplicationId(applicationId)
+      setMyApplicationsError('')
+      setApplicationActionMessage('')
+      await axios.delete(`${API_URL}/my/applications/${applicationId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setMyApplications((current) => current.filter(
+        (application) => application.application_id !== applicationId
+      ))
+      setApplicationActionMessage('ยกเลิกใบสมัครเรียบร้อยแล้ว')
+    } catch (requestError) {
+      console.error(requestError)
+      setMyApplicationsError(
+        requestError.response?.data?.message || 'ไม่สามารถยกเลิกใบสมัครได้ กรุณาลองใหม่อีกครั้ง'
+      )
+    } finally {
+      setCancellingApplicationId(null)
+    }
+  }
+
+  const fetchApplicationsForJobs = async (jobs) => {
+    setJobApplications({})
+    setJobApplicationsError('')
+
+    if (jobs.length === 0) {
+      setJobApplicationsLoading(false)
+      return
+    }
+
+    const token = localStorage.getItem('access_token')
+    setJobApplicationsLoading(true)
+
+    const results = await Promise.allSettled(jobs.map((job) => (
+      axios.get(`${API_URL}/jobs/${job.job_id}/applications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    )))
+    const applicationsByJob = {}
+    let hasErrors = false
+
+    results.forEach((result, index) => {
+      const jobId = jobs[index].job_id
+      if (result.status === 'rejected') {
+        console.error(result.reason)
+        applicationsByJob[jobId] = {
+          error: result.reason.response?.data?.message || 'ไม่สามารถโหลดรายชื่อผู้สมัครได้'
+        }
+        hasErrors = true
+        return
+      }
+
+      const applications = result.value.data?.data ?? result.value.data
+      if (!Array.isArray(applications)) {
+        console.error(new TypeError('Expected job applications API response to contain a collection.'))
+        applicationsByJob[jobId] = { error: 'ไม่สามารถโหลดรายชื่อผู้สมัครได้' }
+        hasErrors = true
+        return
+      }
+
+      applicationsByJob[jobId] = { items: applications }
+    })
+
+    setJobApplications(applicationsByJob)
+    if (hasErrors) {
+      setJobApplicationsError('โหลดรายชื่อผู้สมัครบางรายการไม่สำเร็จ')
+    }
+    setJobApplicationsLoading(false)
   }
 
   const toggleJobStatus = async (job) => {
@@ -145,7 +332,8 @@ function Profile() {
       setUser(response.data)
       await Promise.all([
         fetchReviews(response.data.user_id),
-        fetchSubmissions()
+        fetchSubmissions(),
+        fetchMyApplications()
       ])
 
       localStorage.setItem(
@@ -257,13 +445,7 @@ function Profile() {
   }
 
   if (loading) {
-    return (
-      <div className="px-6 py-16 text-center">
-        <p className="text-gray-500">
-          กำลังโหลดข้อมูลโปรไฟล์...
-        </p>
-      </div>
-    )
+    return null
   }
 
   if (error) {
@@ -425,14 +607,12 @@ function Profile() {
         <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900">รายการที่ฉันส่ง</h2>
           <p className="mt-2 text-sm text-gray-500">
-            บริษัทและประกาศงานจะแสดงต่อสาธารณะหลัง Admin อนุมัติแล้ว
+            บริษัทและประกาศงานจะแสดงต่อสาธารณะหลังที่ผ่านการอนุมัติแล้ว
           </p>
           {submissionsError && (
             <p role="alert" className="mt-4 text-red-600">{submissionsError}</p>
           )}
-          {submissionsLoading ? (
-            <p className="mt-5 text-gray-500">กำลังโหลดรายการที่ส่ง...</p>
-          ) : (
+          {!submissionsLoading && (
             <div className="mt-5 grid gap-6 md:grid-cols-2">
               <div>
                 <h3 className="font-semibold text-gray-800">บริษัท</h3>
@@ -442,7 +622,16 @@ function Profile() {
                   <ul className="mt-3 space-y-3">
                     {submittedCompanies.map((company) => (
                       <li key={company.company_id} className="rounded-lg border p-4">
-                        <p className="font-medium text-gray-900">{company.company_name}</p>
+                        {company.company_id ? (
+                          <Link
+                            to={`/companies/${company.company_id}`}
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            {company.company_name}
+                          </Link>
+                        ) : (
+                          <p className="font-medium text-gray-900">{company.company_name}</p>
+                        )}
                         <p className="mt-1 text-sm text-gray-600">
                           สถานะ: {approvalStatusLabel(company.approval_status)}
                         </p>
@@ -465,9 +654,30 @@ function Profile() {
                   <ul className="mt-3 space-y-3">
                     {submittedJobs.map((job) => (
                       <li key={job.job_id} className="rounded-lg border p-4">
-                        <p className="font-medium text-gray-900">{job.job_title}</p>
+                        {job.job_id ? (
+                          <Link
+                            to={`/jobs/${job.job_id}`}
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            {job.job_title}
+                          </Link>
+                        ) : (
+                          <p className="font-medium text-gray-900">{job.job_title}</p>
+                        )}
                         <p className="mt-1 text-sm text-gray-600">
-                          {job.company?.company_name || 'ไม่ระบุบริษัท'} · สถานะ: {approvalStatusLabel(job.approval_status)}
+                          {job.company?.company_id ? (
+                            <Link
+                              to={`/companies/${job.company.company_id}`}
+                              className="text-blue-600 hover:underline"
+                            >
+                              {job.company.company_name}
+                            </Link>
+                          ) : (
+                            job.company?.company_name || 'ไม่ระบุบริษัท'
+                          )} · สถานะ: {approvalStatusLabel(job.approval_status)}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          ผู้สมัคร: {job.applications_count ?? 0} คน
                         </p>
                         {job.approval_status === 'approved' && (
                           <div className="mt-3 flex items-center gap-3">
@@ -480,9 +690,7 @@ function Profile() {
                               onClick={() => toggleJobStatus(job)}
                               className="rounded border border-blue-600 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
                             >
-                              {updatingJobStatusId === job.job_id
-                                ? 'กำลังบันทึก...'
-                                : job.status === 'open' ? 'ปิดรับสมัคร' : 'เปิดรับสมัคร'}
+                              {job.status === 'open' ? 'ปิดรับสมัคร' : 'เปิดรับสมัคร'}
                             </button>
                           </div>
                         )}
@@ -501,15 +709,206 @@ function Profile() {
         </section>
 
         <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900">ใบสมัครงาน</h2>
+          <div role="tablist" aria-label="รายการใบสมัครงาน" className="mt-5 flex gap-2 border-b">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeApplicationTab === 'mine'}
+              onClick={() => setActiveApplicationTab('mine')}
+              className={`border-b-2 px-4 py-2 text-sm font-medium ${
+                activeApplicationTab === 'mine'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              งานที่ฉันสมัคร
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeApplicationTab === 'received'}
+              onClick={() => setActiveApplicationTab('received')}
+              className={`border-b-2 px-4 py-2 text-sm font-medium ${
+                activeApplicationTab === 'received'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              ผู้สมัครงานของฉัน
+            </button>
+          </div>
+
+          {activeApplicationTab === 'mine' ? (
+            <div role="tabpanel" className="mt-5">
+              {myApplicationsError && (
+                <p role="alert" className="text-red-600">{myApplicationsError}</p>
+              )}
+              {applicationActionMessage && (
+                <p role="status" className="mb-4 text-green-700">{applicationActionMessage}</p>
+              )}
+              {!myApplicationsLoading && (myApplications.length === 0 ? (
+                <p className="text-gray-500">คุณยังไม่ได้สมัครงาน</p>
+              ) : (
+                <ul className="space-y-3">
+                  {myApplications.map((application) => {
+                    const job = application.job || {}
+                    const applicant = application.applicant || application.user || {}
+                    const resumeUrl = application.resume_url
+
+                    return (
+                      <li
+                        key={application.application_id || application.id}
+                        className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {job.job_title || application.job_title || 'ไม่ระบุตำแหน่งงาน'}
+                          </p>
+                          {(job.company?.company_name || application.company?.company_name) && (
+                            <p className="mt-1 text-sm text-gray-600">
+                              {job.company?.company_name || application.company.company_name}
+                            </p>
+                          )}
+                          <p className="mt-1 text-sm text-gray-600">
+                            ผู้สมัคร: {applicant.full_name || applicant.name || 'ไม่ระบุชื่อ'}
+                            {applicant.email ? ` · ${applicant.email}` : ''}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600">
+                            สถานะ: {application.status || application.application_status || 'ไม่ระบุสถานะ'}
+                          </p>
+                          {application.cover_letter && (
+                            <p className="mt-2 whitespace-pre-line text-sm text-gray-700">
+                              จดหมายสมัครงาน: {application.cover_letter}
+                            </p>
+                          )}
+                          <p className="mt-1 text-sm text-gray-500">
+                            วันที่สมัคร: {formatApplicationDate(
+                              application.submitted_at
+                                || application.applied_at
+                                || application.created_at
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {resumeUrl ? (
+                            <ResumeButton resumeUrl={resumeUrl} />
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="cursor-not-allowed rounded border px-3 py-2 text-sm text-gray-400"
+                            >
+                              ดูเรซูเม
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={cancellingApplicationId === application.application_id}
+                            onClick={() => cancelApplication(application.application_id)}
+                            className="rounded border border-red-600 px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            ยกเลิกใบสมัคร
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ))}
+            </div>
+          ) : (
+            <div role="tabpanel" className="mt-5">
+              {jobApplicationsError && (
+                <p role="alert" className="mb-4 text-red-600">{jobApplicationsError}</p>
+              )}
+              {submissionsError && (
+                <p role="alert" className="mb-4 text-red-600">{submissionsError}</p>
+              )}
+              {!submissionsLoading && !submissionsError && (submittedJobs.length === 0 ? (
+                <p className="text-gray-500">คุณยังไม่มีประกาศงาน</p>
+              ) : !jobApplicationsLoading ? (
+                <div className="space-y-5">
+                  {submittedJobs.map((job) => {
+                    const result = jobApplications[job.job_id]
+                    const applicants = result?.items || []
+
+                    return (
+                      <section key={job.job_id} className="rounded-lg border p-4">
+                        <h3 className="font-semibold text-gray-900">{job.job_title}</h3>
+                        {result?.error ? (
+                          <p role="alert" className="mt-3 text-sm text-red-600">
+                            {result.error}
+                          </p>
+                        ) : applicants.length === 0 ? (
+                          <p className="mt-3 text-sm text-gray-500">ยังไม่มีผู้สมัครงาน</p>
+                        ) : (
+                          <ul className="mt-3 space-y-3">
+                            {applicants.map((application) => {
+                              const applicant = application.user || application.applicant || {}
+                              const resumeUrl = application.resume_url
+
+                              return (
+                                <li
+                                  key={application.application_id || application.id}
+                                  className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-gray-50 p-3"
+                                >
+                                  <div>
+                                    <p className="font-medium text-gray-900">
+                                      {applicant.full_name
+                                        || applicant.name
+                                        || application.applicant_name
+                                        || 'ไม่ระบุชื่อ'}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-600">
+                                      {applicant.email || application.email || 'ไม่ระบุอีเมล'}
+                                    </p>
+                                    {application.cover_letter && (
+                                      <p className="mt-2 whitespace-pre-line text-sm text-gray-700">
+                                        จดหมายสมัครงาน: {application.cover_letter}
+                                      </p>
+                                    )}
+                                    <p className="mt-1 text-sm text-gray-500">
+                                      วันที่สมัคร: {formatApplicationDate(
+                                        application.submitted_at
+                                          || application.applied_at
+                                          || application.created_at
+                                      )}
+                                    </p>
+                                  </div>
+                                  {resumeUrl ? (
+                                    <ResumeButton resumeUrl={resumeUrl} />
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled
+                                      className="cursor-not-allowed rounded border px-3 py-2 text-sm text-gray-400"
+                                    >
+                                      ดูเรซูเม
+                                    </button>
+                                  )}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                      </section>
+                    )
+                  })}
+                </div>
+              ) : null)}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-gray-900">รีวิวของฉัน</h2>
           <p className="mt-2 text-sm text-gray-500">
             รีวิวที่ส่งแล้วจะแสดงบนหน้าบริษัททันที
           </p>
           {reviewsError && <p role="alert" className="mt-4 text-red-600">{reviewsError}</p>}
           {reviewMessage && <p role="status" className="mt-4 text-green-700">{reviewMessage}</p>}
-          {reviewsLoading ? (
-            <p className="mt-5 text-gray-500">กำลังโหลดรีวิว...</p>
-          ) : reviews.length === 0 ? (
+          {!reviewsLoading && (reviews.length === 0 ? (
             <p className="mt-5 text-gray-500">คุณยังไม่มีรีวิว</p>
           ) : (
             <div className="mt-5 space-y-4">
@@ -567,7 +966,16 @@ function Profile() {
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-gray-900">{review.company?.company_name}</p>
+                          {review.company?.company_id ? (
+                            <Link
+                              to={`/companies/${review.company.company_id}`}
+                              className="font-semibold text-blue-600 hover:underline"
+                            >
+                              {review.company.company_name}
+                            </Link>
+                          ) : (
+                            <p className="font-semibold text-gray-900">{review.company?.company_name}</p>
+                          )}
                           <p className="mt-1 text-sm text-gray-500">{review.review_text}</p>
                         </div>
                         <div className="flex gap-3">
@@ -596,7 +1004,7 @@ function Profile() {
                 </article>
               ))}
             </div>
-          )}
+          ))}
         </section>
 
 
