@@ -6,7 +6,7 @@ const API_URL = 'http://127.0.0.1:8000/api'
 
 function approvalStatusLabel(status) {
   return {
-    pending: 'รอ Admin อนุมัติ',
+    pending: 'รอการอนุมัติ',
     approved: 'อนุมัติแล้ว',
     rejected: 'ถูกปฏิเสธ'
   }[status] || 'ไม่ทราบสถานะ'
@@ -649,7 +649,7 @@ function Profile() {
                 <h3 className="font-semibold text-gray-800">ประกาศงาน</h3>
              
                 {submittedJobs.length === 0 ? (
-                  <p className="mt-3 text-sm text-gray-500">ยังไม่มีประกาศงานที่ส่ง</p>
+                  <p className="mt-3 text-sm text-gray-500">ยังไม่มีประกาศงาน</p>
                 ) : (
                   <ul className="mt-3 space-y-3">
                     {submittedJobs.map((job) => (

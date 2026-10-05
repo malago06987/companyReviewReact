@@ -5,6 +5,7 @@ import JobList from '../../components/job/JobList'
 import Paginator from '../../components/others/Paginator'
 
 const API_URL = 'http://127.0.0.1:8000/api'
+const PAGE_SIZE = 15
 
 function readCollection(response) {
   const collection = response.data?.data ?? response.data
@@ -47,8 +48,8 @@ function Jobs() {
   const currentPage = Number(searchParams.get('page') || 1)
 
   useEffect(() => {
-    fetchJobs(currentPage)
-  }, [searchParams])
+    fetchJobs(currentPage, selectedFunction)
+  }, [searchParams, selectedFunction])
 
   useEffect(() => {
     axios.get(`${API_URL}/job-functions`).then((response) => {
@@ -65,7 +66,7 @@ function Jobs() {
     })
   }, [])
 
-  const fetchJobs = async (page) => {
+  const fetchJobs = async (page, functionId) => {
     try {
       setLoading(true)
       setError('')
@@ -83,8 +84,29 @@ function Jobs() {
       if (!Array.isArray(jobsData)) {
         throw new TypeError('Expected the API response to contain a collection.')
       }
-      setJobs(jobsData)
-      setLastPage(response.data?.meta?.last_page ?? response.data?.last_page ?? 1)
+      const responseLastPage = response.data?.meta?.last_page ?? response.data?.last_page ?? 1
+
+      if (functionId) {
+        const remainingPages = responseLastPage > 1
+          ? await Promise.all(
+            Array.from({ length: responseLastPage - 1 }, (_, index) => (
+              axios.get(`${API_URL}/jobs`, { params: { page: index + 2 } })
+            ))
+          )
+          : []
+        const allJobs = jobsData.concat(
+          ...remainingPages.map((pageResponse) => readCollection(pageResponse))
+        )
+        const matchingJobs = allJobs.filter((job) => (
+          job.status === 'open'
+          && String(job.job_function?.function_id) === functionId
+        ))
+        setJobs(matchingJobs)
+        setLastPage(Math.max(1, Math.ceil(matchingJobs.length / PAGE_SIZE)))
+      } else {
+        setJobs(jobsData)
+        setLastPage(responseLastPage)
+      }
     } catch (error) {
       console.error(error)
       setError('ไม่สามารถโหลดข้อมูลตำแหน่งงานได้')
@@ -163,14 +185,17 @@ function Jobs() {
     }
   }
 
-  const filteredJobs = jobs.filter((job) => {
-    if (job.status !== 'open') {
-      return false
-    }
-    const matchesFunction = !selectedFunction
-      || String(job.job_function?.function_id) === selectedFunction
-    return matchesFunction
-  })
+  const filteredJobs = selectedFunction
+    ? jobs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+    : jobs.filter((job) => job.status === 'open')
+
+  const selectFunction = (event) => {
+    setSelectedFunction(event.target.value)
+    setSearchParams((params) => {
+      params.delete('page')
+      return params
+    })
+  }
 
   return (
     <div className="bg-gray-50 px-6 py-10">
@@ -345,7 +370,7 @@ function Jobs() {
             กรองตามสายงาน
             <select
               value={selectedFunction}
-              onChange={(event) => setSelectedFunction(event.target.value)}
+              onChange={selectFunction}
               className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-4 py-3"
             >
               <option value="">ทุกสายงาน</option>

@@ -12,6 +12,7 @@ function CompanyDetail() {
   const [company, setCompany] = useState(null)
   const [jobs, setJobs] = useState([])
   const [reviews, setReviews] = useState([])
+  const [reviewCount, setReviewCount] = useState(null)
   const [jobsError, setJobsError] = useState('')
   const [reviewsError, setReviewsError] = useState('')
   const [jobPage, setJobPage] = useState(1)
@@ -71,6 +72,9 @@ function CompanyDetail() {
           setReviewsError('ไม่สามารถโหลดรีวิวของบริษัทนี้ได้')
         } else {
           setReviews(reviewsData)
+          setReviewCount(
+            reviewsResponse.data?.meta?.total ?? reviewsResponse.data?.total ?? reviewsData.length
+          )
           setReviewLastPage(reviewsResponse.data?.meta?.last_page ?? reviewsResponse.data?.last_page ?? 1)
         }
       }
@@ -170,9 +174,14 @@ function CompanyDetail() {
         {/* Rating */}
         <section className="mt-6 rounded-xl bg-white p-6 shadow-sm">
 
-          <h2 className="text-2xl font-bold text-gray-900">
-            คะแนนรีวิวบริษัท
-          </h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-2xl font-bold text-gray-900">
+              คะแนนรีวิวบริษัท
+            </h2>
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+              {reviewCount ?? '—'} รีวิว
+            </span>
+          </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
 
